@@ -30,12 +30,14 @@ When connected to Zscaler, you may see an IP address but not know which datacent
 - 🌐 **Geolocation** - Automatic or manual IP geolocation
   - Auto-detect your public IP address
   - Optional manual source IP input
-  - Shows your city and country- 🛣️ **Trace Route Visualization** - Map multiple IP addresses as a multi-hop route
+  - Shows your city and country
+- 🛣️ **Trace Route Visualization** - Map multiple IP addresses as a multi-hop route
   - Enter multiple IPs (one per line) to visualize the complete path
   - Numbered markers showing each hop in sequence
   - Distance calculation between consecutive hops and total route distance
   - Animated traffic flow lines connecting all hops
-  - Export route data (Copy, JSON, CSV, PNG)- 📦 **Docker Support** - Easy deployment with Docker
+  - Export route data (Copy, JSON, CSV, PNG)
+- 📦 **Docker Support** - Easy deployment with Docker
 - ⚡ **Fast & Efficient** - Caches Zscaler data to minimize API calls
 - 🏥 **Health Check Endpoint** - Monitor application health
 
