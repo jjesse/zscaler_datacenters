@@ -1,0 +1,24 @@
+# docker-compose.override.yml - Local development overrides
+# Copy this file to docker-compose.override.yml and adjust as needed.
+# Docker Compose automatically merges this file with docker-compose.yml.
+
+version: '3.8'
+
+services:
+  zscaler-lookup:
+    environment:
+      - NODE_ENV=development
+      - CACHE_DURATION=60000  # 1 minute for faster iteration
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server.js:/app/server.js
+      - ./utils:/app/utils
+      - ./public:/app/public
+    command: ["node", "server.js"]
+    # Override resource limits for local dev
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 512M

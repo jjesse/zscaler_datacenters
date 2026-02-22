@@ -1,0 +1,295 @@
+openapi: 3.0.3
+info:
+  title: Zscaler Datacenter Lookup API
+  description: REST API for looking up Zscaler datacenter locations from IP addresses.
+  version: 1.3.0
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /api/clouds:
+    get:
+      summary: List supported Zscaler clouds
+      operationId: getClouds
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  clouds:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - zscaler.net
+                      - zscalerone.net
+
+  /api/lookup:
+    get:
+      summary: Look up which Zscaler datacenter an IP address belongs to
+      operationId: lookupIp
+      parameters:
+        - name: cloud
+          in: query
+          required: true
+          schema:
+            type: string
+            example: zscaler.net
+          description: Zscaler cloud hostname
+        - name: ip
+          in: query
+          required: true
+          schema:
+            type: string
+            format: ipv4
+            example: 165.225.28.50
+          description: Zscaler datacenter IPv4 address to look up
+        - name: sourceIp
+          in: query
+          required: false
+          schema:
+            type: string
+            format: ipv4
+            example: 203.0.113.45
+          description: Your public IPv4 address (used for distance calculation)
+      responses:
+        '200':
+          description: Lookup result (success or not-found)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LookupFound'
+                  - $ref: '#/components/schemas/LookupNotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/trace:
+    post:
+      summary: Trace a route through multiple IP addresses
+      operationId: traceRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cloud
+                - ips
+              properties:
+                cloud:
+                  type: string
+                  example: zscaler.net
+                ips:
+                  type: array
+                  items:
+                    type: string
+                    format: ipv4
+                  minItems: 1
+                  maxItems: 50
+                  example:
+                    - 192.168.1.1
+                    - 165.225.28.50
+      responses:
+        '200':
+          description: Trace route result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TraceResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  cacheSize:
+                    type: integer
+                    example: 2
+
+components:
+  schemas:
+    LookupFound:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        ip:
+          type: string
+          format: ipv4
+        cloud:
+          type: string
+        datacenter:
+          type: string
+        city:
+          type: string
+        continent:
+          type: string
+        range:
+          type: string
+          example: 165.225.28.0/24
+        latitude:
+          type: string
+          nullable: true
+        longitude:
+          type: string
+          nullable: true
+        clientIp:
+          type: string
+          nullable: true
+        clientCity:
+          type: string
+          nullable: true
+        clientCountry:
+          type: string
+          nullable: true
+        clientLatitude:
+          type: number
+          nullable: true
+        clientLongitude:
+          type: number
+          nullable: true
+        distanceKm:
+          type: number
+          nullable: true
+        distanceMiles:
+          type: number
+          nullable: true
+
+    LookupNotFound:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        ip:
+          type: string
+          format: ipv4
+        cloud:
+          type: string
+        error:
+          type: string
+          example: IP address not found in any datacenter for this cloud
+
+    TraceResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        cloud:
+          type: string
+        hops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hop'
+        totalHops:
+          type: integer
+        totalDistance:
+          type: number
+          nullable: true
+        totalDistanceMiles:
+          type: number
+          nullable: true
+        foundHops:
+          type: integer
+
+    Hop:
+      type: object
+      properties:
+        ip:
+          type: string
+          format: ipv4
+        found:
+          type: boolean
+        datacenter:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        continent:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        range:
+          type: string
+          nullable: true
+        latitude:
+          type: string
+          nullable: true
+        longitude:
+          type: string
+          nullable: true
+        distanceFromPrevious:
+          type: number
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
