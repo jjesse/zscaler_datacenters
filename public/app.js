@@ -1,4 +1,4 @@
-// DOM Elements
+// DOM Elements - Single Lookup
 const lookupForm = document.getElementById('lookupForm');
 const cloudSelect = document.getElementById('cloudSelect');
 const ipInput = document.getElementById('ipInput');
@@ -11,15 +11,44 @@ const btnText = submitBtn.querySelector('.btn-text');
 const loader = submitBtn.querySelector('.loader');
 const mapContainer = document.getElementById('mapContainer');
 
-// Map instance
+// DOM Elements - Trace Route
+const tracerouteForm = document.getElementById('tracerouteForm');
+const trCloudSelect = document.getElementById('trCloudSelect');
+const hopsInput = document.getElementById('hopsInput');
+const traceSubmitBtn = document.getElementById('traceSubmitBtn');
+const traceResultContainer = document.getElementById('traceResultContainer');
+const traceResultContent = document.getElementById('traceResultContent');
+const traceCloseBtn = document.getElementById('traceCloseBtn');
+const traceBtnText = traceSubmitBtn.querySelector('.btn-text');
+const traceLoader = traceSubmitBtn.querySelector('.loader');
+const traceMapContainer = document.getElementById('traceMapContainer');
+
+// Tab Elements
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+
+// Map instances
 let map = null;
 let clientMarker = null;
 let datacenterMarker = null;
 let flowLine = null;
 
-// Event Listeners
+let traceMap = null;
+let traceMarkers = [];
+let traceLines = [];
+
+// Event Listeners - Tabs
+tabButtons.forEach(button => {
+    button.addEventListener('click', () => switchTab(button.dataset.tab));
+});
+
+// Event Listeners - Single Lookup
 lookupForm.addEventListener('submit', handleSubmit);
 closeBtn.addEventListener('click', hideResults);
+
+// Event Listeners - Trace Route
+tracerouteForm.addEventListener('submit', handleTraceSubmit);
+traceCloseBtn.addEventListener('click', hideTraceResults);
 
 // IP address validation regex
 const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -358,3 +387,330 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Zscaler Datacenter Lookup Tool loaded');
     console.log('Example: Try IP 165.225.28.50 with zscalerthree.net');
 });
+
+// ========================================
+// TAB SWITCHING
+// ========================================
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+    // Update tab buttons
+    tabButtons.forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // Update tab content
+    tabContents.forEach(content => {
+        if (content.id === tabName + 'Tab') {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+    
+    // Invalidate maps when switching to make sure they render correctly
+    setTimeout(() => {
+        if (map && tabName === 'single') map.invalidateSize();
+        if (traceMap && tabName === 'traceroute') traceMap.invalidateSize();
+    }, 100);
+}
+
+// ========================================
+// TRACE ROUTE FUNCTIONALITY
+// ========================================
+
+/**
+ * Handle trace route form submission
+ */
+async function handleTraceSubmit(e) {
+    e.preventDefault();
+    
+    const cloud = trCloudSelect.value;
+    const hopsText = hopsInput.value.trim();
+    
+    // Validate cloud
+    if (!cloud) {
+        showTraceError('Please select a Zscaler cloud');
+        return;
+    }
+    
+    // Parse and validate IPs
+    const ips = hopsText.split('\\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+    
+    if (ips.length === 0) {
+        showTraceError('Please enter at least one IP address');
+        return;
+    }
+    
+    // Validate each IP
+    const invalidIps = ips.filter(ip => !validateIp(ip));
+    if (invalidIps.length > 0) {
+        showTraceError(`Invalid IP address(es): ${invalidIps.join(', ')}`);
+        return;
+    }
+    
+    // Show loading state
+    setTraceLoading(true);
+    hideTraceResults();
+    
+    try {
+        // Make API request for multiple IPs
+        const response = await fetch('/api/trace', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cloud: cloud,
+                ips: ips
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Display results
+        if (data.success && data.hops) {
+            showTraceSuccess(data);
+        } else {
+            showTraceError(data.error || 'Failed to trace route');
+        }
+    } catch (error) {
+        console.error('Trace route error:', error);
+        showTraceError('Failed to trace route. Please check your connection and try again.');
+    } finally {
+        setTraceLoading(false);
+    }
+}
+
+/**
+ * Show loading state for trace route
+ */
+function setTraceLoading(isLoading) {
+    if (isLoading) {
+        traceSubmitBtn.disabled = true;
+        traceBtnText.textContent = 'Tracing...';
+        traceLoader.style.display = 'inline-block';
+    } else {
+        traceSubmitBtn.disabled = false;
+        traceBtnText.textContent = 'Trace Route';
+        traceLoader.style.display = 'none';
+    }
+}
+
+/**
+ * Show trace route success results
+ */
+function showTraceSuccess(data) {
+    let html = `
+        <div class="trace-summary">
+            <div class="info-row">
+                <span class="info-label">Total Hops:</span>
+                <span class="info-value highlight">${data.hops.length}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Cloud:</span>
+                <span class="info-value">${escapeHtml(data.cloud)}</span>
+            </div>
+            ${data.totalDistance ? `
+            <div class="info-row distance-info">
+                <span class="info-label">Total Distance:</span>
+                <span class="info-value highlight-distance">${data.totalDistance.toFixed(1)} km (${data.totalDistanceMiles.toFixed(1)} miles)</span>
+            </div>
+            ` : ''}
+        </div>
+        <div class="hops-list">
+            <h3>Route Details</h3>
+    `;
+    
+    data.hops.forEach((hop, index) => {
+        const hopNum = index + 1;
+        html += `
+            <div class="hop-item ${hop.found ? '' : 'hop-unknown'}">
+                <div class="hop-number">${hopNum}</div>
+                <div class="hop-details">
+                    <div class="hop-ip">${escapeHtml(hop.ip)}</div>
+                    ${hop.found ? `
+                        <div class="hop-location">
+                            📍 ${escapeHtml(hop.datacenter || hop.city || 'Unknown')}
+                            ${hop.country ? `, ${escapeHtml(hop.country)}` : ''}
+                        </div>
+                    ` : `
+                        <div class="hop-location unknown">Location unknown</div>
+                    `}
+                    ${hop.distanceFromPrevious ? `
+                        <div class="hop-distance">
+                            ➡️ ${hop.distanceFromPrevious.toFixed(1)} km from previous hop
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`;
+    
+    traceResultContent.innerHTML = html;
+    traceResultContainer.style.display = 'block';
+    traceResultContainer.querySelector('.result-card').classList.remove('error');
+    
+    // Show map if we have coordinates
+    const hopsWithCoords = data.hops.filter(h => h.latitude && h.longitude);
+    if (hopsWithCoords.length > 0) {
+        showTraceMap(data.hops);
+    } else {
+        traceMapContainer.style.display = 'none';
+    }
+    
+    // Scroll to results
+    traceResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Show trace route error
+ */
+function showTraceError(message) {
+    const html = `
+        <div class="error-message">
+            <div>${escapeHtml(message)}</div>
+        </div>
+    `;
+    
+    traceResultContent.innerHTML = html;
+    traceResultContainer.style.display = 'block';
+    traceResultContainer.querySelector('.result-card').classList.add('error');
+    traceMapContainer.style.display = 'none';
+    
+    // Scroll to results
+    traceResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Display trace route on map
+ */
+function showTraceMap(hops) {
+    traceMapContainer.style.display = 'block';
+    
+    // Filter hops that have coordinates
+    const validHops = hops.filter(h => h.latitude && h.longitude);
+    
+    if (validHops.length === 0) {
+        traceMapContainer.style.display = 'none';
+        return;
+    }
+    
+    // Initialize map if not already created
+    if (!traceMap) {
+        // Center on first hop with coordinates
+        const centerLat = parseFloat(validHops[0].latitude);
+        const centerLng = parseFloat(validHops[0].longitude);
+        
+        traceMap = L.map('traceMap').setView([centerLat, centerLng], 4);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(traceMap);
+    }
+    
+    // Clear existing markers and lines
+    traceMarkers.forEach(marker => traceMap.removeLayer(marker));
+    traceLines.forEach(line => traceMap.removeLayer(line));
+    traceMarkers = [];
+    traceLines = [];
+    
+    // Create markers for each hop
+    const bounds = [];
+    validHops.forEach((hop, index) => {
+        const lat = parseFloat(hop.latitude);
+        const lng = parseFloat(hop.longitude);
+        bounds.push([lat, lng]);
+        
+        // Create numbered marker
+        const icon = L.divIcon({
+            className: 'custom-marker hop-marker',
+            html: `<div class="marker-pin"><span class="hop-marker-number">${index + 1}</span></div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40]
+        });
+        
+        const marker = L.marker([lat, lng], { icon: icon })
+            .addTo(traceMap)
+            .bindPopup(`
+                <b>Hop ${index + 1}</b><br>
+                IP: ${hop.ip}<br>
+                ${hop.datacenter || hop.city || 'Unknown location'}<br>
+                ${hop.country ? hop.country + '<br>' : ''}
+                Lat: ${lat}, Lng: ${lng}
+            `);
+        
+        traceMarkers.push(marker);
+        
+        // Draw line to previous hop
+        if (index > 0) {
+            const prevHop = validHops[index - 1];
+            const prevLat = parseFloat(prevHop.latitude);
+            const prevLng = parseFloat(prevHop.longitude);
+            
+            const line = L.polyline(
+                [[prevLat, prevLng], [lat, lng]],
+                {
+                    color: '#0066cc',
+                    weight: 3,
+                    opacity: 0.7,
+                    dashArray: '10, 10'
+                }
+            ).addTo(traceMap);
+            
+            traceLines.push(line);
+            
+            // Add arrow decorator
+            const arrow = L.polylineDecorator(line, {
+                patterns: [
+                    {
+                        offset: '50%',
+                        repeat: 0,
+                        symbol: L.Symbol.arrowHead({
+                            pixelSize: 12,
+                            polygon: false,
+                            pathOptions: {
+                                stroke: true,
+                                color: '#0066cc',
+                                weight: 2
+                            }
+                        })
+                    }
+                ]
+            }).addTo(traceMap);
+            
+            traceLines.push(arrow);
+        }
+    });
+    
+    // Fit map to show all hops
+    if (bounds.length > 0) {
+        traceMap.fitBounds(bounds, { padding: [50, 50] });
+    }
+    
+    // Force map to refresh
+    setTimeout(() => {
+        traceMap.invalidateSize();
+    }, 100);
+}
+
+/**
+ * Hide trace route results
+ */
+function hideTraceResults() {
+    traceResultContainer.style.display = 'none';
+    traceMapContainer.style.display = 'none';
+}

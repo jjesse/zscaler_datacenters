@@ -386,6 +386,113 @@ app.get('/api/lookup', async (req, res) => {
 });
 
 /**
+ * POST /api/trace - Trace route through multiple IPs
+ * Body: { cloud, ips: [] }
+ */
+app.post('/api/trace', async (req, res) => {
+  const { cloud, ips } = req.body;
+
+  // Validate parameters
+  if (!cloud || !ips || !Array.isArray(ips)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required parameters: cloud and ips (array)'
+    });
+  }
+
+  // Validate cloud
+  if (!ZSCALER_CLOUDS.includes(cloud)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid cloud. Supported clouds: ${ZSCALER_CLOUDS.join(', ')}`
+    });
+  }
+
+  // Validate IP addresses
+  const invalidIps = ips.filter(ip => !isValidIp(ip));
+  if (invalidIps.length > 0) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid IP address(es): ${invalidIps.join(', ')}`
+    });
+  }
+
+  try {
+    // Fetch Zscaler data
+    const zscalerData = await fetchZscalerData(cloud);
+    
+    // Process each hop
+    const hops = [];
+    let totalDistance = 0;
+    let previousHop = null;
+
+    for (const ip of ips) {
+      // Lookup in Zscaler data
+      const zscalerResult = lookupIp(ip, zscalerData);
+      
+      // Get geolocation
+      const geoLocation = await getIpGeolocation(ip);
+      
+      const hop = {
+        ip: ip,
+        found: false
+      };
+
+      // Prefer Zscaler data if found
+      if (zscalerResult) {
+        hop.found = true;
+        hop.datacenter = zscalerResult.datacenter;
+        hop.city = zscalerResult.city;
+        hop.continent = zscalerResult.continent;
+        hop.range = zscalerResult.range;
+        hop.latitude = zscalerResult.latitude;
+        hop.longitude = zscalerResult.longitude;
+      } else if (geoLocation) {
+        // Use geolocation data
+        hop.found = true;
+        hop.city = geoLocation.city;
+        hop.country = geoLocation.country;
+        hop.latitude = geoLocation.latitude;
+        hop.longitude = geoLocation.longitude;
+      }
+
+      // Calculate distance from previous hop
+      if (previousHop && previousHop.latitude && previousHop.longitude && 
+          hop.latitude && hop.longitude) {
+        const distance = calculateDistance(
+          parseFloat(previousHop.latitude),
+          parseFloat(previousHop.longitude),
+          parseFloat(hop.latitude),
+          parseFloat(hop.longitude)
+        );
+        hop.distanceFromPrevious = distance;
+        totalDistance += distance;
+      }
+
+      hops.push(hop);
+      previousHop = hop;
+    }
+
+    res.json({
+      success: true,
+      cloud,
+      hops,
+      totalHops: hops.length,
+      totalDistance: totalDistance > 0 ? totalDistance : null,
+      totalDistanceMiles: totalDistance > 0 ? Math.round(totalDistance * 0.621371 * 10) / 10 : null,
+      foundHops: hops.filter(h => h.found).length
+    });
+  } catch (error) {
+    console.error('Trace route error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process trace route',
+      message: error.message
+    });
+  }
+});
+
+/**
  * GET /api/health - Health check endpoint
  */
 app.get('/api/health', (req, res) => {
