@@ -50,13 +50,13 @@
 - [x] Add distance calculation
 - [x] Add geolocation support
 - [x] Add client IP tracking
+- [x] Add bulk IP lookup feature (Trace Route)
+- [x] Add export results functionality (Copy/JSON/CSV/PNG)
 
 ## Future Enhancements (Optional)
 - [ ] Add reverse lookup (show all datacenters for a cloud)
 - [ ] Add history of recent lookups (local storage)
 - [ ] Add dark mode toggle
-- [ ] Add export results functionality (PDF/CSV)
-- [ ] Add bulk IP lookup feature
 - [ ] Add metrics/analytics
 - [ ] Add latency testing to datacenters
 - [ ] Add datacenter status/availability monitoring
