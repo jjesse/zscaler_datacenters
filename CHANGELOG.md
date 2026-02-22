@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for Haversine distance calculation (`tests/unit/distance.test.js`).
 - Integration tests for all API endpoints (`tests/integration/api.test.js`).
 - Test coverage reporting via `c8`.
-- ESLint configuration (`.eslintrc.js`).
+- ESLint configuration (`eslint.config.js`).
 - GitHub Actions CI workflow (`.github/workflows/ci.yml`).
 - Husky pre-commit hooks with `lint-staged`.
 - `CONTRIBUTING.md` with development setup and guidelines.

@@ -37,7 +37,7 @@ Thank you for your interest in contributing to Zscaler Datacenter Lookup!
 - All JavaScript uses `'use strict'` and ES2021 features.
 - Use `const` by default; `let` only when reassignment is needed.
 - Single quotes for strings.
-- ESLint enforces the rules defined in `.eslintrc.js`.
+- ESLint enforces the rules defined in `eslint.config.js`.
 
 ## Project Structure
 
