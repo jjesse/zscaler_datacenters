@@ -22,6 +22,9 @@ const traceCloseBtn = document.getElementById('traceCloseBtn');
 const traceBtnText = traceSubmitBtn.querySelector('.btn-text');
 const traceLoader = traceSubmitBtn.querySelector('.loader');
 const traceMapContainer = document.getElementById('traceMapContainer');
+const copyTraceBtn = document.getElementById('copyTraceBtn');
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 // Tab Elements
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -36,6 +39,7 @@ let flowLine = null;
 let traceMap = null;
 let traceMarkers = [];
 let traceLines = [];
+let currentTraceData = null; // Store current trace data for export
 
 // Event Listeners - Tabs
 tabButtons.forEach(button => {
@@ -49,6 +53,9 @@ closeBtn.addEventListener('click', hideResults);
 // Event Listeners - Trace Route
 tracerouteForm.addEventListener('submit', handleTraceSubmit);
 traceCloseBtn.addEventListener('click', hideTraceResults);
+copyTraceBtn.addEventListener('click', copyTraceToClipboard);
+exportJsonBtn.addEventListener('click', exportTraceAsJson);
+exportCsvBtn.addEventListener('click', exportTraceAsCsv);
 
 // IP address validation regex
 const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -441,7 +448,7 @@ async function handleTraceSubmit(e) {
     }
     
     // Parse and validate IPs
-    const ips = hopsText.split('\\n')
+    const ips = hopsText.split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
     
@@ -509,6 +516,9 @@ function setTraceLoading(isLoading) {
  * Show trace route success results
  */
 function showTraceSuccess(data) {
+    // Store data for export
+    currentTraceData = data;
+    
     let html = `
         <div class="trace-summary">
             <div class="info-row">
@@ -713,4 +723,162 @@ function showTraceMap(hops) {
 function hideTraceResults() {
     traceResultContainer.style.display = 'none';
     traceMapContainer.style.display = 'none';
+}
+
+// ========================================
+// EXPORT FUNCTIONALITY
+// ========================================
+
+/**
+ * Copy trace route results to clipboard as text
+ */
+function copyTraceToClipboard() {
+    if (!currentTraceData) return;
+    
+    let text = `ZSCALER TRACE ROUTE RESULTS\n`;
+    text += `${'='.repeat(50)}\n\n`;
+    text += `Cloud: ${currentTraceData.cloud}\n`;
+    text += `Total Hops: ${currentTraceData.totalHops}\n`;
+    text += `Found Hops: ${currentTraceData.foundHops}\n`;
+    
+    if (currentTraceData.totalDistance) {
+        text += `Total Distance: ${currentTraceData.totalDistance.toFixed(1)} km (${currentTraceData.totalDistanceMiles.toFixed(1)} miles)\n`;
+    }
+    
+    text += `\nROUTE DETAILS:\n`;
+    text += `${'-'.repeat(50)}\n\n`;
+    
+    currentTraceData.hops.forEach((hop, index) => {
+        text += `Hop ${index + 1}:\n`;
+        text += `  IP: ${hop.ip}\n`;
+        
+        if (hop.found) {
+            if (hop.datacenter) {
+                text += `  Datacenter: ${hop.datacenter}\n`;
+            }
+            if (hop.city) {
+                text += `  City: ${hop.city}\n`;
+            }
+            if (hop.country) {
+                text += `  Country: ${hop.country}\n`;
+            }
+            if (hop.continent) {
+                text += `  Continent: ${hop.continent}\n`;
+            }
+            if (hop.latitude && hop.longitude) {
+                text += `  Coordinates: ${hop.latitude}, ${hop.longitude}\n`;
+            }
+        } else {
+            text += `  Location: Unknown\n`;
+        }
+        
+        if (hop.distanceFromPrevious) {
+            text += `  Distance from previous: ${hop.distanceFromPrevious.toFixed(1)} km\n`;
+        }
+        
+        text += `\n`;
+    });
+    
+    text += `\nGenerated: ${new Date().toLocaleString()}\n`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text).then(() => {
+        // Show success feedback
+        const originalText = copyTraceBtn.textContent;
+        copyTraceBtn.textContent = '✓ Copied!';
+        copyTraceBtn.style.backgroundColor = '#28a745';
+        
+        setTimeout(() => {
+            copyTraceBtn.textContent = originalText;
+            copyTraceBtn.style.backgroundColor = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+    });
+}
+
+/**
+ * Export trace route results as JSON
+ */
+function exportTraceAsJson() {
+    if (!currentTraceData) return;
+    
+    const dataStr = JSON.stringify(currentTraceData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `zscaler-trace-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    // Show success feedback
+    const originalText = exportJsonBtn.textContent;
+    exportJsonBtn.textContent = '✓ Downloaded!';
+    exportJsonBtn.style.backgroundColor = '#28a745';
+    
+    setTimeout(() => {
+        exportJsonBtn.textContent = originalText;
+        exportJsonBtn.style.backgroundColor = '';
+    }, 2000);
+}
+
+/**
+ * Export trace route results as CSV
+ */
+function exportTraceAsCsv() {
+    if (!currentTraceData) return;
+    
+    let csv = 'Hop,IP Address,Location,City,Country,Datacenter,Continent,Latitude,Longitude,Distance from Previous (km)\n';
+    
+    currentTraceData.hops.forEach((hop, index) => {
+        const hopNum = index + 1;
+        const ip = hop.ip || '';
+        const location = hop.found ? 'Found' : 'Unknown';
+        const city = hop.city || '';
+        const country = hop.country || '';
+        const datacenter = hop.datacenter || '';
+        const continent = hop.continent || '';
+        const lat = hop.latitude || '';
+        const lng = hop.longitude || '';
+        const distance = hop.distanceFromPrevious ? hop.distanceFromPrevious.toFixed(1) : '';
+        
+        csv += `${hopNum},"${ip}","${location}","${city}","${country}","${datacenter}","${continent}","${lat}","${lng}","${distance}"\n`;
+    });
+    
+    // Add summary row
+    csv += `\nSummary\n`;
+    csv += `Cloud,"${currentTraceData.cloud}"\n`;
+    csv += `Total Hops,${currentTraceData.totalHops}\n`;
+    csv += `Found Hops,${currentTraceData.foundHops}\n`;
+    
+    if (currentTraceData.totalDistance) {
+        csv += `Total Distance (km),${currentTraceData.totalDistance.toFixed(1)}\n`;
+        csv += `Total Distance (miles),${currentTraceData.totalDistanceMiles.toFixed(1)}\n`;
+    }
+    
+    const csvBlob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(csvBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `zscaler-trace-${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    // Show success feedback
+    const originalText = exportCsvBtn.textContent;
+    exportCsvBtn.textContent = '✓ Downloaded!';
+    exportCsvBtn.style.backgroundColor = '#28a745';
+    
+    setTimeout(() => {
+        exportCsvBtn.textContent = originalText;
+        exportCsvBtn.style.backgroundColor = '';
+    }, 2000);
 }

@@ -130,7 +130,12 @@
                     <div class="card result-card">
                         <div class="result-header">
                             <h2>Trace Route Results</h2>
-                            <button class="btn-close" id="traceCloseBtn">&times;</button>
+                            <div class="result-actions">
+                                <button class="btn-export" id="copyTraceBtn" title="Copy to Clipboard">📋 Copy</button>
+                                <button class="btn-export" id="exportJsonBtn" title="Export as JSON">📄 JSON</button>
+                                <button class="btn-export" id="exportCsvBtn" title="Export as CSV">📊 CSV</button>
+                                <button class="btn-close" id="traceCloseBtn">&times;</button>
+                            </div>
                         </div>
                         <div id="traceResultContent"></div>
                         <div id="traceMapContainer" class="map-container" style="display: none;">

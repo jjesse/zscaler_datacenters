@@ -244,6 +244,31 @@ main {
     color: var(--text-primary);
 }
 
+.result-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-export {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+}
+
 .btn-close {
     background: none;
     border: none;
