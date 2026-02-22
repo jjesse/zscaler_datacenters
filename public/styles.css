@@ -331,6 +331,14 @@ main {
     box-shadow: var(--shadow);
 }
 
+#traceMap {
+    height: 500px;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
 footer {
     text-align: center;
     padding: 30px 20px;
