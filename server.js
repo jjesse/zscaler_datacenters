@@ -204,14 +204,20 @@ function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) {
     // x-forwarded-for can contain multiple IPs, take the first one
-    return forwarded.split(',')[0].trim();
+    const candidate = forwarded.split(',')[0].trim();
+    // Only trust the header value if it is a valid IPv4 address (prevents spoofing with non-IP values)
+    if (isValidIp(candidate)) {
+      return candidate;
+    }
   }
-  
-  return req.headers['x-real-ip'] ||
-         req.connection.remoteAddress ||
-         req.socket.remoteAddress ||
-         req.connection.socket?.remoteAddress ||
-         '127.0.0.1';
+
+  const realIp = req.headers['x-real-ip'];
+  if (realIp && isValidIp(realIp.trim())) {
+    return realIp.trim();
+  }
+
+  // req.socket.remoteAddress is the authoritative source when no proxy headers are present
+  return req.socket.remoteAddress || '127.0.0.1';
 }
 
 /**
@@ -397,6 +403,21 @@ app.post('/api/trace', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Missing required parameters: cloud and ips (array)'
+    });
+  }
+
+  // Limit the number of IPs to prevent abuse
+  const MAX_TRACE_IPS = 50;
+  if (ips.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'At least one IP address is required'
+    });
+  }
+  if (ips.length > MAX_TRACE_IPS) {
+    return res.status(400).json({
+      success: false,
+      error: `Too many IP addresses. Maximum allowed is ${MAX_TRACE_IPS}`
     });
   }
 

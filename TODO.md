@@ -53,6 +53,12 @@
 - [x] Add bulk IP lookup feature (Trace Route)
 - [x] Add export results functionality (Copy/JSON/CSV/PNG)
 
+## Completed Improvements ✅
+- [x] Limit maximum number of IPs in trace route to prevent DoS (server.js)
+- [x] Validate x-forwarded-for IP address before trusting it (server.js)
+- [x] Run Docker container as non-root user (Dockerfile)
+- [x] Add `.env.example` file documenting all environment variables
+
 ## Future Enhancements (Optional)
 - [ ] Add reverse lookup (show all datacenters for a cloud)
 - [ ] Add history of recent lookups (local storage)
@@ -63,3 +69,42 @@
 - [ ] Add multi-language support
 - [ ] Add keyboard shortcuts
 - [ ] Add sharing results via URL
+
+## Security Improvements
+- [ ] Add rate limiting middleware (express-rate-limit) to all API endpoints
+- [ ] Add security headers using helmet.js
+- [ ] Add Content Security Policy (CSP) headers
+- [ ] Restrict CORS to known origins instead of allowing all origins
+- [ ] Sanitize internal error details from API error responses
+
+## Code Quality Improvements
+- [ ] Add ESLint configuration for consistent code style
+- [ ] Extract IP utility functions (ipToInt, parseCidr, isValidIp) to a separate `utils/ip.js` module
+- [ ] Remove duplicate cloud list between frontend (index.html) and backend (server.js); populate the dropdown dynamically from `/api/clouds`
+- [ ] Add JSDoc type annotations to all functions
+- [ ] Use `const` consistently and avoid implicit globals
+
+## Testing
+- [ ] Add unit tests for IP validation (`isValidIp`)
+- [ ] Add unit tests for CIDR parsing (`parseCidr`) and range checking (`isIpInRange`)
+- [ ] Add unit tests for the Haversine distance calculation (`calculateDistance`)
+- [ ] Add integration tests for all API endpoints (`/api/lookup`, `/api/trace`, `/api/clouds`, `/api/health`)
+- [ ] Add test coverage reporting (e.g., nyc/c8)
+- [ ] Set up automated test runs in CI (GitHub Actions)
+
+## Developer Experience
+- [ ] Add GitHub Actions CI workflow to lint and test on pull requests
+- [ ] Add pre-commit hooks with husky + lint-staged
+- [ ] Add CONTRIBUTING.md with development setup and contribution guidelines
+- [ ] Add CHANGELOG.md to track version history
+- [ ] Add OpenAPI/Swagger specification for the REST API
+
+## Performance
+- [ ] Add response compression middleware (`compression` npm package)
+- [ ] Add `Cache-Control` headers for static assets served from `/public`
+- [ ] Consider bundling/minifying frontend JS and CSS for production
+
+## Infrastructure
+- [ ] Pin base Docker image to a specific digest instead of a floating tag (e.g., `node:18-alpine@sha256:...`)
+- [ ] Add resource limits (CPU/memory) to `docker-compose.yml`
+- [ ] Add a `docker-compose.override.yml` example for local development overrides
