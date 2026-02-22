@@ -25,6 +25,7 @@ const traceMapContainer = document.getElementById('traceMapContainer');
 const copyTraceBtn = document.getElementById('copyTraceBtn');
 const exportJsonBtn = document.getElementById('exportJsonBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
+const exportPngBtn = document.getElementById('exportPngBtn');
 
 // Tab Elements
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -56,6 +57,7 @@ traceCloseBtn.addEventListener('click', hideTraceResults);
 copyTraceBtn.addEventListener('click', copyTraceToClipboard);
 exportJsonBtn.addEventListener('click', exportTraceAsJson);
 exportCsvBtn.addEventListener('click', exportTraceAsCsv);
+exportPngBtn.addEventListener('click', exportTraceAsPng);
 
 // IP address validation regex
 const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -881,4 +883,60 @@ function exportTraceAsCsv() {
         exportCsvBtn.textContent = originalText;
         exportCsvBtn.style.backgroundColor = '';
     }, 2000);
+}
+
+/**
+ * Export trace route results as PNG image
+ */
+function exportTraceAsPng() {
+    if (!currentTraceData) return;
+    
+    // Show loading state
+    const originalText = exportPngBtn.textContent;
+    exportPngBtn.textContent = '⏳ Generating...';
+    exportPngBtn.disabled = true;
+    
+    // Get the trace result container
+    const element = document.getElementById('traceResultContainer');
+    
+    // Use html2canvas to capture the element
+    html2canvas(element, {
+        scale: 2, // Higher quality
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        scrollY: -window.scrollY,
+        scrollX: -window.scrollX,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+    }).then(canvas => {
+        // Convert canvas to blob
+        canvas.toBlob(blob => {
+            // Create download link
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `zscaler-trace-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Show success feedback
+            exportPngBtn.textContent = '✓ Downloaded!';
+            exportPngBtn.style.backgroundColor = '#28a745';
+            exportPngBtn.disabled = false;
+            
+            setTimeout(() => {
+                exportPngBtn.textContent = originalText;
+                exportPngBtn.style.backgroundColor = '';
+            }, 2000);
+        });
+    }).catch(error => {
+        console.error('PNG export error:', error);
+        alert('Failed to export PNG. Please try again.');
+        exportPngBtn.textContent = originalText;
+        exportPngBtn.disabled = false;
+    });
 }
