@@ -42,6 +42,27 @@ let traceMarkers = [];
 let traceLines = [];
 let currentTraceData = null; // Store current trace data for export
 
+// Populate cloud dropdowns dynamically from /api/clouds
+(async function populateClouds() {
+    try {
+        const response = await fetch('/api/clouds');
+        const data = await response.json();
+        if (data.success && Array.isArray(data.clouds)) {
+            const selects = [cloudSelect, trCloudSelect];
+            selects.forEach(select => {
+                data.clouds.forEach(cloud => {
+                    const option = document.createElement('option');
+                    option.value = cloud;
+                    option.textContent = cloud;
+                    select.appendChild(option);
+                });
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load cloud list:', e);
+    }
+})();
+
 // Event Listeners - Tabs
 tabButtons.forEach(button => {
     button.addEventListener('click', () => switchTab(button.dataset.tab));

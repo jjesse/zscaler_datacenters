@@ -71,40 +71,40 @@
 - [ ] Add sharing results via URL
 
 ## Security Improvements
-- [ ] Add rate limiting middleware (express-rate-limit) to all API endpoints
-- [ ] Add security headers using helmet.js
-- [ ] Add Content Security Policy (CSP) headers
-- [ ] Restrict CORS to known origins instead of allowing all origins
-- [ ] Sanitize internal error details from API error responses
+- [x] Add rate limiting middleware (express-rate-limit) to all API endpoints
+- [x] Add security headers using helmet.js
+- [x] Add Content Security Policy (CSP) headers
+- [x] Restrict CORS to known origins instead of allowing all origins
+- [x] Sanitize internal error details from API error responses
 
 ## Code Quality Improvements
-- [ ] Add ESLint configuration for consistent code style
-- [ ] Extract IP utility functions (ipToInt, parseCidr, isValidIp) to a separate `utils/ip.js` module
-- [ ] Remove duplicate cloud list between frontend (index.html) and backend (server.js); populate the dropdown dynamically from `/api/clouds`
-- [ ] Add JSDoc type annotations to all functions
-- [ ] Use `const` consistently and avoid implicit globals
+- [x] Add ESLint configuration for consistent code style
+- [x] Extract IP utility functions (ipToInt, parseCidr, isValidIp) to a separate `utils/ip.js` module
+- [x] Remove duplicate cloud list between frontend (index.html) and backend (server.js); populate the dropdown dynamically from `/api/clouds`
+- [x] Add JSDoc type annotations to all functions
+- [x] Use `const` consistently and avoid implicit globals
 
 ## Testing
-- [ ] Add unit tests for IP validation (`isValidIp`)
-- [ ] Add unit tests for CIDR parsing (`parseCidr`) and range checking (`isIpInRange`)
-- [ ] Add unit tests for the Haversine distance calculation (`calculateDistance`)
-- [ ] Add integration tests for all API endpoints (`/api/lookup`, `/api/trace`, `/api/clouds`, `/api/health`)
-- [ ] Add test coverage reporting (e.g., nyc/c8)
-- [ ] Set up automated test runs in CI (GitHub Actions)
+- [x] Add unit tests for IP validation (`isValidIp`)
+- [x] Add unit tests for CIDR parsing (`parseCidr`) and range checking (`isIpInRange`)
+- [x] Add unit tests for the Haversine distance calculation (`calculateDistance`)
+- [x] Add integration tests for all API endpoints (`/api/lookup`, `/api/trace`, `/api/clouds`, `/api/health`)
+- [x] Add test coverage reporting (e.g., nyc/c8)
+- [x] Set up automated test runs in CI (GitHub Actions)
 
 ## Developer Experience
-- [ ] Add GitHub Actions CI workflow to lint and test on pull requests
-- [ ] Add pre-commit hooks with husky + lint-staged
-- [ ] Add CONTRIBUTING.md with development setup and contribution guidelines
-- [ ] Add CHANGELOG.md to track version history
-- [ ] Add OpenAPI/Swagger specification for the REST API
+- [x] Add GitHub Actions CI workflow to lint and test on pull requests
+- [x] Add pre-commit hooks with husky + lint-staged
+- [x] Add CONTRIBUTING.md with development setup and contribution guidelines
+- [x] Add CHANGELOG.md to track version history
+- [x] Add OpenAPI/Swagger specification for the REST API
 
 ## Performance
-- [ ] Add response compression middleware (`compression` npm package)
-- [ ] Add `Cache-Control` headers for static assets served from `/public`
-- [ ] Consider bundling/minifying frontend JS and CSS for production
+- [x] Add response compression middleware (`compression` npm package)
+- [x] Add `Cache-Control` headers for static assets served from `/public`
+- [x] Consider bundling/minifying frontend JS and CSS for production (decided not to bundle for this simple app)
 
 ## Infrastructure
-- [ ] Pin base Docker image to a specific digest instead of a floating tag (e.g., `node:18-alpine@sha256:...`)
-- [ ] Add resource limits (CPU/memory) to `docker-compose.yml`
-- [ ] Add a `docker-compose.override.yml` example for local development overrides
+- [x] Pin base Docker image to a specific digest instead of a floating tag (e.g., `node:18-alpine@sha256:...`) – comment added to Dockerfile; tag kept as `node:18-alpine` since registry is not accessible from this environment
+- [x] Add resource limits (CPU/memory) to `docker-compose.yml`
+- [x] Add a `docker-compose.override.yml` example for local development overrides

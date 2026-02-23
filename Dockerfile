@@ -1,4 +1,5 @@
 # Use Node.js LTS version
+# For production, pin to a specific digest: node:18-alpine@sha256:<digest>
 FROM node:18-alpine
 
 # Set working directory
@@ -12,6 +13,7 @@ RUN npm install --production
 
 # Copy application files
 COPY server.js ./
+COPY utils ./utils
 COPY public ./public
 
 # Expose port
