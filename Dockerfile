@@ -1,6 +1,5 @@
-# Use Node.js LTS version
-# For production, pin to a specific digest: node:18-alpine@sha256:<digest>
-FROM node:18-alpine
+# Use Node.js LTS version pinned to specific digest for security and reproducibility
+FROM node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
 
 # Set working directory
 WORKDIR /app
