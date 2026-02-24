@@ -502,7 +502,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Zscaler Datacenter Lookup running on http://localhost:${PORT}`);
   console.log(`📊 Cache duration: ${CACHE_DURATION / 1000}s`);
   console.log(`🌍 Supported clouds: ${ZSCALER_CLOUDS.length}`);
