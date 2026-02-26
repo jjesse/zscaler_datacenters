@@ -10,6 +10,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - CACHE_DURATION=3600000  # 1 hour in milliseconds
+      - ZDX_CLIENT_ID=${ZDX_CLIENT_ID}  # ZDX API Client ID
+      - ZDX_CLIENT_SECRET=${ZDX_CLIENT_SECRET}  # ZDX API Client Secret
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('https').get({hostname:'127.0.0.1',port:3000,path:'/api/health',rejectUnauthorized:false},(r)=>{process.exit(r.statusCode===200?0:1)})"]

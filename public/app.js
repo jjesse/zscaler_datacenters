@@ -27,6 +27,22 @@ const exportJsonBtn = document.getElementById('exportJsonBtn');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
 const exportPngBtn = document.getElementById('exportPngBtn');
 
+// DOM Elements - ZDX User Path
+const zdxPathForm = document.getElementById('zdxPathForm');
+const zdxCloudSelect = document.getElementById('zdxCloudSelect');
+const userEmailInput = document.getElementById('userEmailInput');
+const appNameInput = document.getElementById('appNameInput');
+const zdxSubmitBtn = document.getElementById('zdxSubmitBtn');
+const zdxResultContainer = document.getElementById('zdxResultContainer');
+const zdxResultContent = document.getElementById('zdxResultContent');
+const zdxCloseBtn = document.getElementById('zdxCloseBtn');
+const zdxBtnText = zdxSubmitBtn.querySelector('.btn-text');
+const zdxLoader = zdxSubmitBtn.querySelector('.loader');
+const zdxMapContainer = document.getElementById('zdxMapContainer');
+const copyZdxBtn = document.getElementById('copyZdxBtn');
+const exportZdxJsonBtn = document.getElementById('exportZdxJsonBtn');
+const exportZdxCsvBtn = document.getElementById('exportZdxCsvBtn');
+
 // Tab Elements
 const tabButtons = document.querySelectorAll('.tab-button');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -41,6 +57,11 @@ let traceMap = null;
 let traceMarkers = [];
 let traceLines = [];
 let currentTraceData = null; // Store current trace data for export
+
+let zdxMap = null;
+let zdxMarkers = [];
+let zdxLines = [];
+let currentZdxData = null; // Store current ZDX data for export
 
 // Populate cloud dropdowns dynamically from /api/clouds
 (async function populateClouds() {
@@ -79,6 +100,13 @@ copyTraceBtn.addEventListener('click', copyTraceToClipboard);
 exportJsonBtn.addEventListener('click', exportTraceAsJson);
 exportCsvBtn.addEventListener('click', exportTraceAsCsv);
 exportPngBtn.addEventListener('click', exportTraceAsPng);
+
+// Event Listeners - ZDX User Path
+zdxPathForm.addEventListener('submit', handleZdxSubmit);
+zdxCloseBtn.addEventListener('click', hideZdxResults);
+copyZdxBtn.addEventListener('click', copyZdxToClipboard);
+exportZdxJsonBtn.addEventListener('click', exportZdxAsJson);
+exportZdxCsvBtn.addEventListener('click', exportZdxAsCsv);
 
 // IP address validation regex
 const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
@@ -448,6 +476,7 @@ function switchTab(tabName) {
     setTimeout(() => {
         if (map && tabName === 'single') map.invalidateSize();
         if (traceMap && tabName === 'traceroute') traceMap.invalidateSize();
+        if (zdxMap && tabName === 'zdxpath') zdxMap.invalidateSize();
     }, 100);
 }
 
@@ -960,4 +989,378 @@ function exportTraceAsPng() {
         exportPngBtn.textContent = originalText;
         exportPngBtn.disabled = false;
     });
+}
+// ========================================
+// ZDX USER PATH FUNCTIONALITY
+// ========================================
+
+/**
+ * Handle ZDX user path form submission
+ */
+async function handleZdxSubmit(e) {
+    e.preventDefault();
+    
+    const cloud = zdxCloudSelect.value;
+    const userEmail = userEmailInput.value.trim();
+    const appName = appNameInput.value.trim();
+    
+    // Validate inputs
+    if (!cloud || !userEmail || !appName) {
+        showZdxError('Please fill in all required fields');
+        return;
+    }
+    
+    // Show loading state
+    zdxSubmitBtn.disabled = true;
+    zdxBtnText.style.display = 'none';
+    zdxLoader.style.display = 'inline-block';
+    hideZdxResults();
+    
+    try {
+        const response = await fetch('/api/zdx/userpath', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cloud,
+                userEmail,
+                appName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch user path');
+        }
+        
+        if (data.success && data.data) {
+            currentZdxData = data.data;
+            displayZdxResults(data.data);
+        } else {
+            throw new Error(data.error || 'No data returned');
+        }
+    } catch (error) {
+        console.error('ZDX Path Error:', error);
+        showZdxError(error.message || 'Failed to fetch ZDX user path data. Please check your credentials and try again.');
+    } finally {
+        // Reset button state
+        zdxSubmitBtn.disabled = false;
+        zdxBtnText.style.display = 'inline';
+        zdxLoader.style.display = 'none';
+    }
+}
+
+/**
+ * Display ZDX user path results
+ */
+function displayZdxResults(data) {
+    let html = `
+        <div class="success-message">
+            <h3>✓ Path Found</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>User:</strong> ${escapeHtml(data.user)}
+                </div>
+                <div class="info-item">
+                    <strong>Device:</strong> ${escapeHtml(data.device)}
+                </div>
+                <div class="info-item">
+                    <strong>Application:</strong> ${escapeHtml(data.application)}
+                </div>
+                <div class="info-item">
+                    <strong>Probe:</strong> ${escapeHtml(data.probe)}
+                </div>
+            </div>
+        </div>
+        
+        <div class="hops-container">
+            <h3>Network Path (${data.hops.length} hops)</h3>
+            <table class="hops-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>IP Address</th>
+                        <th>Location</th>
+                        <th>Latency</th>
+                        <th>Segment</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.hops.forEach((hop, index) => {
+        const location = hop.city && hop.country 
+            ? `${hop.city}, ${hop.country}` 
+            : hop.country || 'Unknown';
+        const latency = hop.latency !== null ? `${hop.latency.toFixed(2)} ms` : '*';
+        
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><code>${escapeHtml(hop.ip)}</code></td>
+                <td>${escapeHtml(location)}</td>
+                <td>${latency}</td>
+                <td><small>${escapeHtml(hop.segment)}</small></td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    zdxResultContent.innerHTML = html;
+    zdxResultContainer.style.display = 'block';
+    
+    // Render map with path
+    renderZdxMap(data.hops);
+    
+    // Scroll to results
+    zdxResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Show ZDX error message
+ */
+function showZdxError(message) {
+    zdxResultContent.innerHTML = `
+        <div class="error-message">
+            <h3>⚠️ Error</h3>
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+    
+    zdxResultContainer.style.display = 'block';
+    zdxMapContainer.style.display = 'none';
+    zdxResultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * Hide ZDX results
+ */
+function hideZdxResults() {
+    zdxResultContainer.style.display = 'none';
+    zdxMapContainer.style.display = 'none';
+    
+    // Clear map
+    if (zdxMap) {
+        zdxMarkers.forEach(marker => marker.remove());
+        zdxLines.forEach(line => line.remove());
+        zdxMarkers = [];
+        zdxLines = [];
+    }
+}
+
+/**
+ * Render ZDX user path map
+ */
+function renderZdxMap(hops) {
+    // Filter hops with valid coordinates
+    const validHops = hops.filter(hop => hop.latitude && hop.longitude);
+    
+    if (validHops.length === 0) {
+        zdxMapContainer.style.display = 'none';
+        return;
+    }
+    
+    zdxMapContainer.style.display = 'block';
+    
+    // Initialize map if needed
+    if (!zdxMap) {
+        zdxMap = L.map('zdxMap').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(zdxMap);
+    } else {
+        // Clear existing markers and lines
+        zdxMarkers.forEach(marker => marker.remove());
+        zdxLines.forEach(line => line.remove());
+        zdxMarkers = [];
+        zdxLines = [];
+    }
+    
+    // Add markers for each hop
+    validHops.forEach((hop, index) => {
+        const lat = parseFloat(hop.latitude);
+        const lng = parseFloat(hop.longitude);
+        
+        const markerColor = index === 0 ? 'green' : 
+                           index === validHops.length - 1 ? 'red' : 'blue';
+        
+        const marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            })
+        }).addTo(zdxMap);
+        
+        const location = hop.city && hop.country 
+            ? `${hop.city}, ${hop.country}` 
+            : hop.country || 'Unknown';
+        const latency = hop.latency !== null ? `${hop.latency.toFixed(2)} ms` : 'N/A';
+        
+        marker.bindPopup(`
+            <strong>Hop ${index + 1}</strong><br>
+            IP: ${hop.ip}<br>
+            Location: ${location}<br>
+            Latency: ${latency}<br>
+            Segment: ${hop.segment}
+        `);
+        
+        zdxMarkers.push(marker);
+    });
+    
+    // Draw lines between hops
+    for (let i = 0; i < validHops.length - 1; i++) {
+        const lat1 = parseFloat(validHops[i].latitude);
+        const lng1 = parseFloat(validHops[i].longitude);
+        const lat2 = parseFloat(validHops[i + 1].latitude);
+        const lng2 = parseFloat(validHops[i + 1].longitude);
+        
+        const line = L.polyline([[lat1, lng1], [lat2, lng2]], {
+            color: '#007bff',
+            weight: 3,
+            opacity: 0.7
+        }).addTo(zdxMap);
+        
+        // Add arrow decorator
+        const decorator = L.polylineDecorator(line, {
+            patterns: [
+                {
+                    offset: '50%',
+                    repeat: 0,
+                    symbol: L.Symbol.arrowHead({
+                        pixelSize: 10,
+                        pathOptions: {
+                            fillOpacity: 1,
+                            weight: 0,
+                            color: '#007bff'
+                        }
+                    })
+                }
+            ]
+        }).addTo(zdxMap);
+        
+        zdxLines.push(line, decorator);
+    }
+    
+    // Fit map bounds to show all markers
+    const bounds = L.latLngBounds(validHops.map(hop => [hop.latitude, hop.longitude]));
+    zdxMap.fitBounds(bounds, { padding: [50, 50] });
+}
+
+/**
+ * Copy ZDX results to clipboard
+ */
+function copyZdxToClipboard() {
+    if (!currentZdxData) return;
+    
+    let text = `ZDX User Path Results\n`;
+    text += `=====================\n\n`;
+    text += `User: ${currentZdxData.user}\n`;
+    text += `Device: ${currentZdxData.device}\n`;
+    text += `Application: ${currentZdxData.application}\n`;
+    text += `Probe: ${currentZdxData.probe}\n`;
+    text += `\nNetwork Path:\n`;
+    text += `-`.repeat(80) + '\n';
+    
+    currentZdxData.hops.forEach((hop, index) => {
+        const location = hop.city && hop.country 
+            ? `${hop.city}, ${hop.country}` 
+            : hop.country || 'Unknown';
+        const latency = hop.latency !== null ? `${hop.latency.toFixed(2)} ms` : '*';
+        text += `${index + 1}. ${hop.ip} | ${location} | ${latency} | ${hop.segment}\n`;
+    });
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = copyZdxBtn.textContent;
+        copyZdxBtn.textContent = '✓ Copied!';
+        copyZdxBtn.style.backgroundColor = '#28a745';
+        setTimeout(() => {
+            copyZdxBtn.textContent = originalText;
+            copyZdxBtn.style.backgroundColor = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        alert('Failed to copy to clipboard');
+    });
+}
+
+/**
+ * Export ZDX results as JSON
+ */
+function exportZdxAsJson() {
+    if (!currentZdxData) return;
+    
+    const dataStr = JSON.stringify(currentZdxData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `zdx-userpath-${currentZdxData.user.replace('@', '-')}-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    const originalText = exportZdxJsonBtn.textContent;
+    exportZdxJsonBtn.textContent = '✓ Downloaded!';
+    exportZdxJsonBtn.style.backgroundColor = '#28a745';
+    setTimeout(() => {
+        exportZdxJsonBtn.textContent = originalText;
+        exportZdxJsonBtn.style.backgroundColor = '';
+    }, 2000);
+}
+
+/**
+ * Export ZDX results as CSV
+ */
+function exportZdxAsCsv() {
+    if (!currentZdxData) return;
+    
+    let csv = 'Hop,IP Address,City,Country,Latitude,Longitude,Latency (ms),Segment\n';
+    
+    currentZdxData.hops.forEach((hop, index) => {
+        const latency = hop.latency !== null ? hop.latency.toFixed(2) : '';
+        const city = hop.city || '';
+        const country = hop.country || '';
+        const lat = hop.latitude || '';
+        const lng = hop.longitude || '';
+        
+        csv += `${index + 1},"${hop.ip}","${city}","${country}","${lat}","${lng}","${latency}","${hop.segment}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `zdx-userpath-${currentZdxData.user.replace('@', '-')}-${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    const originalText = exportZdxCsvBtn.textContent;
+    exportZdxCsvBtn.textContent = '✓ Downloaded!';
+    exportZdxCsvBtn.style.backgroundColor = '#28a745';
+    setTimeout(() => {
+        exportZdxCsvBtn.textContent = originalText;
+        exportZdxCsvBtn.style.backgroundColor = '';
+    }, 2000);
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

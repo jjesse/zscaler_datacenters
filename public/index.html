@@ -20,6 +20,7 @@
             <div class="tabs">
                 <button class="tab-button active" data-tab="single">Single Lookup</button>
                 <button class="tab-button" data-tab="traceroute">Trace Route</button>
+                <button class="tab-button" data-tab="zdxpath">ZDX User Path</button>
             </div>
 
             <!-- Single Lookup Tab -->
@@ -126,6 +127,68 @@
                         <div id="traceMapContainer" class="map-container" style="display: none;">
                             <h3>Route Visualization</h3>
                             <div id="traceMap"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZDX User Path Tab -->
+            <div id="zdxpathTab" class="tab-content">
+                <div class="card">
+                    <form id="zdxPathForm">
+                        <div class="form-group">
+                            <label for="zdxCloudSelect">ZDX Cloud</label>
+                            <select id="zdxCloudSelect" required>
+                                <option value="">Select a cloud...</option>
+                                <option value="zdxcloud">ZDX Cloud (zdxcloud)</option>
+                                <option value="zscalerbeta">Beta Cloud (zscalerbeta)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="userEmailInput">User Email</label>
+                            <input 
+                                type="email" 
+                                id="userEmailInput" 
+                                placeholder="e.g., jonathan@jessefamily.cloud" 
+                                required
+                            >
+                            <small>Enter the user's email address monitored in ZDX</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="appNameInput">Application Name</label>
+                            <input 
+                                type="text" 
+                                id="appNameInput" 
+                                placeholder="e.g., Microsoft Login" 
+                                required
+                            >
+                            <small>Enter the application name configured in ZDX</small>
+                        </div>
+
+                        <button type="submit" class="btn-primary" id="zdxSubmitBtn">
+                            <span class="btn-text">Get User Path</span>
+                            <span class="loader" style="display: none;"></span>
+                        </button>
+                    </form>
+                </div>
+
+                <div id="zdxResultContainer" class="result-container" style="display: none;">
+                    <div class="card result-card">
+                        <div class="result-header">
+                            <h2>ZDX User Path Results</h2>
+                            <div class="result-actions">
+                                <button class="btn-export" id="copyZdxBtn" title="Copy to Clipboard">📋 Copy</button>
+                                <button class="btn-export" id="exportZdxJsonBtn" title="Export as JSON">📄 JSON</button>
+                                <button class="btn-export" id="exportZdxCsvBtn" title="Export as CSV">📊 CSV</button>
+                                <button class="btn-close" id="zdxCloseBtn">&times;</button>
+                            </div>
+                        </div>
+                        <div id="zdxResultContent"></div>
+                        <div id="zdxMapContainer" class="map-container" style="display: none;">
+                            <h3>User Path Visualization</h3>
+                            <div id="zdxMap"></div>
                         </div>
                     </div>
                 </div>

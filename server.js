@@ -487,6 +487,155 @@ app.post('/api/trace', async (req, res) => {
 });
 
 /**
+ * POST /api/zdx/userpath - Get ZDX user path to application
+ * Body: { cloud, userEmail, appName }
+ */
+app.post('/api/zdx/userpath', async (req, res) => {
+  const { cloud, userEmail, appName } = req.body;
+
+  // Validate required parameters
+  if (!cloud || !userEmail || !appName) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required parameters: cloud, userEmail, and appName'
+    });
+  }
+
+  // Check for ZDX credentials
+  const zdxClientId = process.env.ZDX_CLIENT_ID;
+  const zdxClientSecret = process.env.ZDX_CLIENT_SECRET;
+
+  if (!zdxClientId || !zdxClientSecret) {
+    return res.status(500).json({
+      success: false,
+      error: 'ZDX API credentials not configured. Set ZDX_CLIENT_ID and ZDX_CLIENT_SECRET environment variables.',
+      needsConfig: true
+    });
+  }
+
+  try {
+    // 1. Get authentication token
+    const authUrl = `https://api.${cloud}.net/v1/oauth/token`;
+    const authResponse = await axios.post(authUrl, 
+      `grant_type=client_credentials&client_id=${zdxClientId}&client_secret=${zdxClientSecret}`,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+
+    const authToken = authResponse.data.access_token;
+    const headers = {
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type': 'application/json'
+    };
+
+    // 2. Get device list for user
+    const devicesUrl = `https://api.${cloud}.net/v1/devices?search=${encodeURIComponent(userEmail)}`;
+    const devicesResponse = await axios.get(devicesUrl, { headers });
+    
+    if (!devicesResponse.data || !devicesResponse.data.devices || devicesResponse.data.devices.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `No devices found for user: ${userEmail}`
+      });
+    }
+
+    const device = devicesResponse.data.devices[0];
+    const deviceId = device.id;
+
+    // 3. Get apps list
+    const appsUrl = `https://api.${cloud}.net/v1/apps`;
+    const appsResponse = await axios.get(appsUrl, { headers });
+    
+    const targetApp = appsResponse.data.find(app => 
+      app.name.toLowerCase().includes(appName.toLowerCase())
+    );
+
+    if (!targetApp) {
+      return res.status(404).json({
+        success: false,
+        error: `Application not found: ${appName}`,
+        availableApps: appsResponse.data.map(a => a.name).slice(0, 10)
+      });
+    }
+
+    // 4. Get cloud path probes
+    const probesUrl = `https://api.${cloud}.net/v1/devices/${deviceId}/apps/${targetApp.id}/cloudpath-probes`;
+    const probesResponse = await axios.get(probesUrl, { headers });
+
+    if (!probesResponse.data || probesResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `No Cloud Path Probes configured for application: ${targetApp.name}`,
+        hint: 'Please configure a Cloud Path Probe for this app in ZDX Admin Portal'
+      });
+    }
+
+    const probe = probesResponse.data[0];
+
+    // 5. Get cloud path data
+    const cloudpathUrl = `https://api.${cloud}.net/v1/devices/${deviceId}/apps/${targetApp.id}/cloudpath-probes/${probe.id}/cloudpath`;
+    const cloudpathResponse = await axios.get(cloudpathUrl, { headers });
+
+    if (!cloudpathResponse.data || cloudpathResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No cloud path data available'
+      });
+    }
+
+    const pathData = cloudpathResponse.data[0];
+
+    // 6. Extract and enrich IPs with geolocation
+    const hops = [];
+    for (const leg of pathData.cloudpath) {
+      for (const hop of leg.hops) {
+        if (hop.ip) {
+          hops.push({
+            ip: hop.ip,
+            latency: hop.latency_avg || null,
+            segment: `${leg.src} → ${leg.dst}`
+          });
+        }
+      }
+    }
+
+    // 7. Get geolocation for all IPs
+    const enrichedHops = await Promise.all(
+      hops.map(async (hop) => {
+        try {
+          const geoData = await getIpGeolocation(hop.ip);
+          return { ...hop, ...geoData };
+        } catch (error) {
+          return { ...hop, country: 'Unknown', city: null, lat: null, lon: null };
+        }
+      })
+    );
+
+    res.json({
+      success: true,
+      data: {
+        user: userEmail,
+        device: device.name,
+        application: targetApp.name,
+        probe: probe.name,
+        timestamp: pathData.timestamp,
+        hops: enrichedHops
+      }
+    });
+
+  } catch (error) {
+    console.error('ZDX API Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: error.response?.data?.message || error.message || 'Failed to fetch ZDX user path data'
+    });
+  }
+});
+
+/**
  * GET /api/health - Health check endpoint
  */
 app.get('/api/health', (req, res) => {
