@@ -1,6 +1,8 @@
 'use strict';
 
 const express = require('express');
+const https = require('https');
+const fs = require('fs');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
@@ -501,9 +503,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Zscaler Datacenter Lookup running on http://localhost:${PORT}`);
+// SSL certificate options
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, 'certs', 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'certs', 'cert.pem'))
+};
+
+// Start HTTPS server
+const server = https.createServer(sslOptions, app);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Zscaler Datacenter Lookup running on https://localhost:${PORT}`);
   console.log(`📊 Cache duration: ${CACHE_DURATION / 1000}s`);
   console.log(`🌍 Supported clouds: ${ZSCALER_CLOUDS.length}`);
 });
