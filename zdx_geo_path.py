@@ -2,13 +2,13 @@ import os
 import argparse
 import requests
 from datetime import datetime
-from zscaler.zdx import ZDXClient
+from zscaler.zdx.legacy import LegacyZDXClientHelper as ZDXClient
 
 # Helper function to find country from IP
 def get_country(ip):
     # Filter out private IP addresses (Home/Office LAN)
     private_prefixes = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.']
-    if any(ip.startswith(prefix) for prefix in private_prefixes) or ip == "0.0.0.0":
+    if any(ip.startswith(prefix) for prefix in private_prefixes) or ip == "0.0.0.0" or not ip:
         return "Local Network"
     
     try:
@@ -28,39 +28,93 @@ def run_geo_lookup(user_email, app_name, cloud_name):
     )
 
     # 1. Device Lookup
-    devices = client.devices.list_devices(search=user_email)
+    devices_response = client.devices.list_devices(search=user_email)
+    
+    # Extract devices from response structure (tuple -> list -> dict -> devices list)
+    if not devices_response or not devices_response[0]:
+        print(f"Error: No devices found for {user_email}")
+        return
+    
+    devices = devices_response[0][0].get('devices', [])
     if not devices:
         print(f"Error: No devices found for {user_email}")
         return
 
-    active_device = max(devices, key=lambda d: d.get('last_seen', 0))
+    # Just use the first device (devices don't have last_seen in this response)
+    active_device = devices[0]
     device_id = active_device.get('id')
 
     # 2. App Lookup
-    apps = client.apps.list_apps()
+    apps_response = client.apps.list_apps()
+    apps = apps_response[0]  # Apps are directly in the first element
     target_app = next((a for a in apps if app_name.lower() in a.get('name').lower()), None)
     
     if not target_app:
         print(f"Error: App '{app_name}' not found.")
         return
 
-    # 3. Cloud Path Fetch & Geo Enrichment
-    print(f"\nTracing Path for {user_email} to {target_app['name']}...")
-    print(f"{'Hop':<5} {'IP Address':<18} {'RTT (ms)':<10} {'Country':<15}")
-    print("-" * 55)
-
-    path_data = client.apps.get_app_cloud_path(device_id=device_id, app_id=target_app['id'], since=2)
-
-    if not path_data or 'hops' not in path_data:
+    # 3. Get Cloud Path Probe ID
+    headers = client.headers.copy()
+    headers['Authorization'] = f"Bearer {client.auth_token}"
+    
+    probes_url = f"{client.url}/v1/devices/{device_id}/apps/{target_app['id']}/cloudpath-probes"
+    probes_response = requests.get(probes_url, headers=headers, timeout=client.timeout)
+    
+    if probes_response.status_code != 200:
+        print(f"Error: No Cloud Path Probes found for {target_app['name']}")
+        print(f"Please configure a Cloud Path Probe for this app in ZDX Admin Portal")
+        return
+    
+    probes = probes_response.json()
+    if not probes:
+        print(f"Error: No Cloud Path Probes configured for {target_app['name']}")
+        return
+    
+    probe_id = probes[0]['id']
+    
+    # 4. Fetch Cloud Path Data
+    cloudpath_url = f"{client.url}/v1/devices/{device_id}/apps/{target_app['id']}/cloudpath-probes/{probe_id}/cloudpath"
+    cloudpath_response = requests.get(cloudpath_url, headers=headers, timeout=client.timeout)
+    
+    if cloudpath_response.status_code != 200:
+        print(f"Error: Could not fetch cloud path data")
+        return
+    
+    path_data = cloudpath_response.json()
+    if not path_data:
         print("No path data found.")
         return
-
-    for hop in path_data['hops']:
-        ip = hop.get('address', '?.?.?.?')
-        rtt = hop.get('rtt', '*')
-        country = get_country(ip)
-        
-        print(f"{hop.get('hop'):<5} {ip:<18} {rtt:<10} {country:<15}")
+    
+    # 5. Display Path with Geo Enrichment
+    latest = path_data[0]  # Most recent probe
+    print(f"\nTracing Path for {user_email} to {target_app['name']}...")
+    print(f"Device: {active_device['name']}")
+    print(f"Probe: {probes[0]['name']}")
+    
+    # Get and display client's external/public IP (ISP's public IP)
+    try:
+        external_ip_response = requests.get('https://api.ipify.org?format=json', timeout=5)
+        if external_ip_response.status_code == 200:
+            external_ip = external_ip_response.json().get('ip')
+            country = get_country(external_ip)
+            print(f"\nClient External (ISP) IP: {external_ip} | {country}")
+    except:
+        print(f"\nClient External IP: (Unable to detect)")
+    
+    print(f"\n{'Hop':<5} {'IP Address':<18} {'RTT (ms)':<10} {'Country':<20}")
+    print("-" * 60)
+    
+    hop_num = 1
+    for leg in latest['cloudpath']:
+        print(f"\n--- {leg['src'].capitalize()} → {leg['dst'].capitalize()} ---")
+        for hop in leg['hops']:
+            ip = hop['ip']
+            latency = hop['latency_avg'] if hop['latency_avg'] > 0 else '*'
+            
+            if ip:  # Only show hops with IPs
+                country = get_country(ip)
+                print(f"{hop_num:<5} {ip:<18} {latency:<10} {country:<20}")
+                hop_num += 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -69,4 +123,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Run the script
-    run_geo_lookup(args.user, args.app, "zscalerthree")
+    run_geo_lookup(args.user, args.app, "zdxcloud")
