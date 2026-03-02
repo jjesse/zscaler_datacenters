@@ -115,3 +115,44 @@ describe('POST /api/trace', () => {
     expect(res.body.error).toMatch(/Invalid IP address/);
   });
 });
+
+describe('POST /api/zdx/userpath', () => {
+  it('returns 400 when required parameters are missing', async () => {
+    const res = await request(app)
+      .post('/api/zdx/userpath')
+      .send({ userEmail: 'user@example.com' });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Missing required parameters/);
+  });
+
+  it('returns 400 for an invalid ZDX cloud', async () => {
+    const res = await request(app)
+      .post('/api/zdx/userpath')
+      .send({ cloud: 'notacloud', userEmail: 'user@example.com', appName: 'MyApp' });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Invalid ZDX cloud/);
+  });
+
+  it('returns 500 when ZDX credentials are not configured', async () => {
+    const origClientId = process.env.ZDX_CLIENT_ID;
+    const origClientSecret = process.env.ZDX_CLIENT_SECRET;
+    delete process.env.ZDX_CLIENT_ID;
+    delete process.env.ZDX_CLIENT_SECRET;
+
+    let res;
+    try {
+      res = await request(app)
+        .post('/api/zdx/userpath')
+        .send({ cloud: 'zdxcloud', userEmail: 'user@example.com', appName: 'MyApp' });
+    } finally {
+      if (origClientId !== undefined) process.env.ZDX_CLIENT_ID = origClientId;
+      if (origClientSecret !== undefined) process.env.ZDX_CLIENT_SECRET = origClientSecret;
+    }
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(res.body.needsConfig).toBe(true);
+  });
+});

@@ -20,7 +20,7 @@ def get_country(ip):
         response = requests.get(f"https://ipapi.co/{ip}/country_name/", timeout=3)
         if response.status_code == 200:
             return response.text.strip()
-    except:
+    except Exception:
         pass
     return "Unknown"
 
@@ -102,7 +102,7 @@ def run_geo_lookup(user_email, app_name, cloud_name):
             external_ip = external_ip_response.json().get('ip')
             country = get_country(external_ip)
             print(f"\nClient External (ISP) IP: {external_ip} | {country}")
-    except:
+    except Exception:
         print(f"\nClient External IP: (Unable to detect)")
     
     print(f"\n{'Hop':<5} {'IP Address':<18} {'RTT (ms)':<10} {'Country':<20}")
@@ -113,7 +113,8 @@ def run_geo_lookup(user_email, app_name, cloud_name):
         print(f"\n--- {leg['src'].capitalize()} → {leg['dst'].capitalize()} ---")
         for hop in leg['hops']:
             ip = hop['ip']
-            latency = hop['latency_avg'] if hop['latency_avg'] > 0 else '*'
+            latency_val = hop.get('latency_avg')
+            latency = latency_val if latency_val and latency_val > 0 else '*'
             
             if ip:  # Only show hops with IPs
                 country = get_country(ip)
@@ -124,7 +125,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--user", required=True)
     parser.add_argument("--app", required=True)
+    parser.add_argument("--cloud", default="zdxcloud", help="ZDX cloud name (default: zdxcloud)")
     args = parser.parse_args()
     
     # Run the script
-    run_geo_lookup(args.user, args.app, "zdxcloud")
+    run_geo_lookup(args.user, args.app, args.cloud)
