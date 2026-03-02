@@ -95,6 +95,13 @@ const ZSCALER_CLOUDS = [
   'zscalerten.net'
 ];
 
+// List of supported ZDX clouds
+const ZDX_CLOUDS = [
+  'zdxcloud',
+  'zdxbeta',
+  'zdxgov'
+];
+
 // Cache for Zscaler data
 const dataCache = new Map();
 
@@ -499,6 +506,13 @@ app.post('/api/zdx/userpath', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Missing required parameters: cloud, userEmail, and appName'
+    });
+  }
+
+  if (!ZDX_CLOUDS.includes(cloud)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid ZDX cloud. Supported clouds: ${ZDX_CLOUDS.join(', ')}`
     });
   }
 
