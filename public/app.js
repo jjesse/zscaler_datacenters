@@ -1,3 +1,110 @@
+// Dark Mode Theme Toggle
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
+const themeText = document.getElementById('themeText');
+
+// Initialize theme from localStorage or default to light
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme, false);
+}
+
+// Set the theme
+function setTheme(theme, save = true) {
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    if (theme === 'dark') {
+        themeIcon.textContent = '☀️';
+        themeText.textContent = 'Light';
+    } else {
+        themeIcon.textContent = '🌙';
+        themeText.textContent = 'Dark';
+    }
+    
+    if (save) {
+        localStorage.setItem('theme', theme);
+    }
+    
+    // Update Leaflet map tiles if maps exist
+    updateMapTiles();
+}
+
+// Toggle between light and dark themes
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+}
+
+// Update map tiles for current theme
+function updateMapTiles() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const tileUrl = theme === 'dark' 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    
+    // Update single lookup map
+    if (map && map._container) {
+        map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
+        });
+        L.tileLayer(tileUrl, {
+            attribution: theme === 'dark' 
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+    }
+    
+    // Update trace map
+    if (traceMap && traceMap._container) {
+        traceMap.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                traceMap.removeLayer(layer);
+            }
+        });
+        L.tileLayer(tileUrl, {
+            attribution: theme === 'dark'
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(traceMap);
+    }
+    
+    // Update ZDX map
+    if (zdxMap && zdxMap._container) {
+        zdxMap.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                zdxMap.removeLayer(layer);
+            }
+        });
+        L.tileLayer(tileUrl, {
+            attribution: theme === 'dark'
+                ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(zdxMap);
+    }
+}
+
+// Initialize theme on page load
+initTheme();
+
+// Event listener for theme toggle
+themeToggle.addEventListener('click', toggleTheme);
+
+// Helper function to get tile layer based on theme
+function getTileLayer() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const tileUrl = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const attribution = theme === 'dark'
+        ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    
+    return L.tileLayer(tileUrl, { attribution, maxZoom: 19 });
+}
+
 // DOM Elements - Single Lookup
 const lookupForm = document.getElementById('lookupForm');
 const cloudSelect = document.getElementById('cloudSelect');
@@ -310,11 +417,8 @@ function showMap(datacenterLat, datacenterLng, datacenterName, clientLat, client
         
         map = L.map('map').setView([centerLat, centerLng], 4);
         
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(map);
+        // Add theme-aware tile layer
+        getTileLayer().addTo(map);
     }
     
     // Clear existing markers and lines
@@ -676,11 +780,8 @@ function showTraceMap(hops) {
         
         traceMap = L.map('traceMap').setView([centerLat, centerLng], 4);
         
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        }).addTo(traceMap);
+        // Add theme-aware tile layer
+        getTileLayer().addTo(traceMap);
     }
     
     // Clear existing markers and lines
@@ -1172,10 +1273,7 @@ function renderZdxMap(hops) {
     // Initialize map if needed
     if (!zdxMap) {
         zdxMap = L.map('zdxMap').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(zdxMap);
+        getTileLayer().addTo(zdxMap);
     } else {
         // Clear existing markers and lines
         zdxMarkers.forEach(marker => marker.remove());

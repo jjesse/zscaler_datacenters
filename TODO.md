@@ -88,7 +88,7 @@ These items were flagged during automated code review but have not yet been addr
 ## Future Enhancements (Optional)
 - [ ] Add reverse lookup (show all datacenters for a cloud)
 - [ ] Add history of recent lookups (local storage)
-- [ ] Add dark mode toggle
+- [x] Add dark mode toggle
 - [ ] Add metrics/analytics
 - [ ] Add latency testing to datacenters
 - [ ] Add datacenter status/availability monitoring
