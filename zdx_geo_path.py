@@ -3,6 +3,10 @@ import argparse
 import requests
 from datetime import datetime
 from zscaler.zdx.legacy import LegacyZDXClientHelper as ZDXClient
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Helper function to find country from IP
 def get_country(ip):
