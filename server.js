@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const axios = require('axios');
@@ -608,7 +609,7 @@ app.post('/api/zdx/userpath', async (req, res) => {
         try {
           const geoData = await getIpGeolocation(hop.ip);
           return { ...hop, ...geoData };
-        } catch (error) {
+        } catch {
           return { ...hop, country: 'Unknown', city: null, lat: null, lon: null };
         }
       })
@@ -652,18 +653,31 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// SSL certificate options
-const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, 'certs', 'key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, 'certs', 'cert.pem'))
-};
+// Start server - use HTTPS if certificates exist, otherwise HTTP
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, 'certs', 'key.pem');
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, 'certs', 'cert.pem');
 
-// Start HTTPS server
-const server = https.createServer(sslOptions, app);
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Zscaler Datacenter Lookup running on https://localhost:${PORT}`);
-  console.log(`📊 Cache duration: ${CACHE_DURATION / 1000}s`);
-  console.log(`🌍 Supported clouds: ${ZSCALER_CLOUDS.length}`);
-});
+let server;
+if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
+  const sslOptions = {
+    key: fs.readFileSync(SSL_KEY_PATH),
+    cert: fs.readFileSync(SSL_CERT_PATH)
+  };
+  server = https.createServer(sslOptions, app);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Zscaler Datacenter Lookup running on https://localhost:${PORT}`);
+    console.log(`📊 Cache duration: ${CACHE_DURATION / 1000}s`);
+    console.log(`🌍 Supported clouds: ${ZSCALER_CLOUDS.length}`);
+  });
+} else {
+  server = http.createServer(app);
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Zscaler Datacenter Lookup running on http://localhost:${PORT}`);
+    console.log('⚠️  No SSL certificates found – running in HTTP mode.');
+    console.log('   Set SSL_KEY_PATH and SSL_CERT_PATH env vars to enable HTTPS.');
+    console.log(`📊 Cache duration: ${CACHE_DURATION / 1000}s`);
+    console.log(`🌍 Supported clouds: ${ZSCALER_CLOUDS.length}`);
+  });
+}
 
 module.exports = app; // Export for testing
