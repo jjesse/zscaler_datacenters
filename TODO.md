@@ -59,6 +59,32 @@
 - [x] Run Docker container as non-root user (Dockerfile)
 - [x] Add `.env.example` file documenting all environment variables
 
+## Open Code Review Feedback (from PR #2 review — unresolved)
+
+These items were flagged during automated code review but have not yet been addressed:
+
+### Bug Fixes
+- [ ] Fix RFC 1918 `172.x.x.x` private-IP check in `getIpGeolocation` (`server.js` line 248) — currently matches any `172.*` address but the private range is `172.16.0.0/12` (second octet 16–31 only); public IPs like `172.1.0.1` are incorrectly treated as private
+- [ ] Fix CORS origin callback to call `callback(null, false)` instead of `throw new Error(…)` (`server.js` line 28) — throwing causes a 500 response rather than the expected CORS rejection
+
+### Code Quality
+- [ ] Add input validation to IP utility functions in `utils/ip.js` (null, undefined, or empty-string inputs currently produce uncaught errors)
+- [ ] Validate CIDR format inside `parseCidr` (`utils/ip.js` line 32) — missing `/` separator or prefix length outside `0–32` produces incorrect results silently
+- [ ] Extract `calculateDistance` from `server.js` to a dedicated `utils/distance.js` module and import it in both `server.js` and `tests/unit/distance.test.js`; currently the test duplicates the implementation, so regressions in `server.js` won't be caught
+- [ ] Add cloud allowlist check inside `fetchZscalerData` as a defence-in-depth guard (`server.js` line 114) — today the function trusts callers to pre-validate `cloud`
+- [ ] Remove deprecated `git add` line from `lint-staged` config in `package.json` (lint-staged v10+ stages changes automatically)
+
+### Test Coverage
+- [ ] Add null / undefined / empty-string edge-case tests to `tests/unit/ip.test.js` (currently only valid and obviously-invalid inputs are tested)
+- [ ] Add happy-path integration tests for `/api/lookup` and `/api/trace` (`tests/integration/api.test.js`) — current suite only exercises error paths; successful responses with expected data shapes are untested
+
+## Documentation Gaps
+- [ ] Add `/api/zdx/userpath` endpoint to `openapi.yaml` (endpoint exists in `server.js` but is absent from the spec)
+- [ ] Add `/api/zdx/userpath` usage to `README.md` API Endpoints section
+- [ ] Document `ALLOWED_ORIGINS` environment variable in the `README.md` Configuration section (it is in `.env.example` but not in the README)
+- [ ] Add `CHANGELOG.md` entries for PR #3 (optional HTTPS / HTTP fallback, `SSL_KEY_PATH`/`SSL_CERT_PATH` env vars) and PR #4 (SSRF fix for `/api/zdx/userpath`, ZDX credentials in `.env.example`, Python bug fixes in `zdx_geo_path.py`)
+- [ ] Fix typos in `ZDX_Geo_Tracker.md` (e.g. "Environment", "scrip", "perofrm", "login" → "logic")
+
 ## Future Enhancements (Optional)
 - [ ] Add reverse lookup (show all datacenters for a cloud)
 - [ ] Add history of recent lookups (local storage)
