@@ -144,6 +144,88 @@ paths:
                     type: integer
                     example: 2
 
+  /api/zdx/userpath:
+    post:
+      summary: Get ZDX user path to application
+      operationId: getZdxUserPath
+      description: >
+        Retrieves the network path from a specific user's device to a specific application
+        using the Zscaler Digital Experience (ZDX) API. Requires ZDX API credentials.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cloud
+                - userEmail
+                - appName
+              properties:
+                cloud:
+                  type: string
+                  example: zdxcloud
+                  description: ZDX cloud identifier
+                userEmail:
+                  type: string
+                  format: email
+                  example: user@example.com
+                  description: Email address of the ZDX user
+                appName:
+                  type: string
+                  example: Office 365
+                  description: Name of the application to trace
+      responses:
+        '200':
+          description: Successfully retrieved user path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  userEmail:
+                    type: string
+                  appName:
+                    type: string
+                  deviceId:
+                    type: string
+                  path:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        hop:
+                          type: integer
+                        ip:
+                          type: string
+                        latency:
+                          type: number
+                        location:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: User or application not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: ZDX API error or credentials not configured
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    properties:
+                      needsConfig:
+                        type: boolean
+                        example: true
+
 components:
   schemas:
     LookupFound:

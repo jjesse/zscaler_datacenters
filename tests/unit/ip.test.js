@@ -18,6 +18,27 @@ describe('ipToInt', () => {
   test('converts 10.0.0.1 correctly', () => {
     expect(ipToInt('10.0.0.1')).toBe((10 << 24 | 0 << 16 | 0 << 8 | 1) >>> 0);
   });
+
+  test('throws TypeError for null input', () => {
+    expect(() => ipToInt(null)).toThrow(TypeError);
+    expect(() => ipToInt(null)).toThrow('IP address must be a non-empty string');
+  });
+
+  test('throws TypeError for undefined input', () => {
+    expect(() => ipToInt(undefined)).toThrow(TypeError);
+    expect(() => ipToInt(undefined)).toThrow('IP address must be a non-empty string');
+  });
+
+  test('throws TypeError for empty string', () => {
+    expect(() => ipToInt('')).toThrow(TypeError);
+    expect(() => ipToInt('')).toThrow('IP address must be a non-empty string');
+  });
+
+  test('throws TypeError for non-string input', () => {
+    expect(() => ipToInt(12345)).toThrow(TypeError);
+    expect(() => ipToInt({})).toThrow(TypeError);
+    expect(() => ipToInt([])).toThrow(TypeError);
+  });
 });
 
 describe('parseCidr', () => {
@@ -44,6 +65,44 @@ describe('parseCidr', () => {
     const result = parseCidr('172.16.0.0/16');
     expect(result.start).toBe(ipToInt('172.16.0.0'));
     expect(result.end).toBe(ipToInt('172.16.255.255'));
+  });
+
+  test('throws TypeError for null input', () => {
+    expect(() => parseCidr(null)).toThrow(TypeError);
+    expect(() => parseCidr(null)).toThrow('CIDR must be a non-empty string');
+  });
+
+  test('throws TypeError for undefined input', () => {
+    expect(() => parseCidr(undefined)).toThrow(TypeError);
+    expect(() => parseCidr(undefined)).toThrow('CIDR must be a non-empty string');
+  });
+
+  test('throws TypeError for empty string', () => {
+    expect(() => parseCidr('')).toThrow(TypeError);
+    expect(() => parseCidr('')).toThrow('CIDR must be a non-empty string');
+  });
+
+  test('throws Error for missing "/" separator', () => {
+    expect(() => parseCidr('192.168.1.0')).toThrow('Invalid CIDR format: missing "/" separator');
+  });
+
+  test('throws Error for invalid prefix length (negative)', () => {
+    expect(() => parseCidr('192.168.1.0/-1')).toThrow('Invalid CIDR prefix length: must be 0-32');
+  });
+
+  test('throws Error for invalid prefix length (> 32)', () => {
+    expect(() => parseCidr('192.168.1.0/33')).toThrow('Invalid CIDR prefix length: must be 0-32');
+    expect(() => parseCidr('192.168.1.0/64')).toThrow('Invalid CIDR prefix length: must be 0-32');
+  });
+
+  test('throws Error for non-numeric prefix length', () => {
+    expect(() => parseCidr('192.168.1.0/abc')).toThrow('Invalid CIDR prefix length');
+  });
+
+  test('parses edge case /0 network', () => {
+    const result = parseCidr('0.0.0.0/0');
+    expect(result.start).toBe(0);
+    expect(result.end).toBe(4294967295);
   });
 });
 
@@ -94,5 +153,19 @@ describe('isValidIp', () => {
   test('returns false for IPv6', () => {
     expect(isValidIp('::1')).toBe(false);
     expect(isValidIp('2001:db8::1')).toBe(false);
+  });
+
+  test('returns false for null input', () => {
+    expect(isValidIp(null)).toBe(false);
+  });
+
+  test('returns false for undefined input', () => {
+    expect(isValidIp(undefined)).toBe(false);
+  });
+
+  test('returns false for non-string input', () => {
+    expect(isValidIp(12345)).toBe(false);
+    expect(isValidIp({})).toBe(false);
+    expect(isValidIp([])).toBe(false);
   });
 });

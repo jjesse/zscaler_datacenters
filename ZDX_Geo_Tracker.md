@@ -5,7 +5,7 @@ This tool uses the Zscaler Digital Experience (ZDX) API to trace the network pat
 
 ## Prerequisites
 
-The following prerequities are needed
+The following prerequisites are needed
 - Python 3.8+ installed
 - A Zscaler ZDX subscription with Admin access to generate API keys
 - The Application you want to query must already have a <b>Cloud Path Probe </b> configured in the ZDX portal.
@@ -13,14 +13,14 @@ The following prerequities are needed
 ## Step #1 - Get your ZDX API Credentials
 
 - Login to your ZDX Admin
-- Adminstration -> Role Management
+- Administration -> Role Management
     - Make sure your role has "API Key Management" enabled
 - Go to Administration -> API Key Management
 - Add an API Key
 - Copy the Client ID and Client Secret
     - NOTE: The secret is only shown once, save it securely!!!
 
-## Step #2 - Enviornmental Setup
+## Step #2 - Environmental Setup
 
 Open your terminal and install the following required libraries:
 ```bash
@@ -30,7 +30,7 @@ pip install zscaler-sdk-python requests
 
 ## Step #3 - Configuration
 
-To keep your credentials secuire, set them as <b>Enviornment Variables</b>. Do not include them in your script
+To keep your credentials secure, set them as <b>Environment Variables</b>. Do not include them in your script
 
 ```bash
 export ZDX_CLIENT_ID="your_client_id_here"
@@ -38,7 +38,7 @@ export ZDX_CLIENT_SECRET="your_client_secret_here"
 export ZDX_CLOUD="zscalerthree"
 ```
 
-## Step #4 - Running the scrip
+## Step #4 - Running the script
 
 Save the Python Script (zdx_geo_path.py) and run it with the following syntax:
 
@@ -48,7 +48,7 @@ python zdx_geo_path.py --user jonathan@jessefamily.cloud --app "Office 365"
 
 ### Expected output:
 
-The script will perofrm the following login:
+The script will perform the following logic:
 - Authenticate with Zscaler
 - Find the most recently active device for the user
 - Retrieve the hop-by-hop IP list

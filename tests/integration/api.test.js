@@ -59,6 +59,31 @@ describe('GET /api/lookup', () => {
     expect(res.body.success).toBe(false);
     expect(res.body.error).toMatch(/Invalid source IP/);
   });
+
+  it('returns 200 with datacenter info for a valid IP lookup', async () => {
+    // Use a common public IP that should be in one of the Zscaler ranges
+    const res = await request(app).get('/api/lookup?cloud=zscaler.net&ip=165.225.0.1');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    if (res.body.datacenter) {
+      expect(typeof res.body.datacenter.name).toBe('string');
+      expect(typeof res.body.datacenter.city).toBe('string');
+      expect(typeof res.body.datacenter.country).toBe('string');
+      expect(typeof res.body.datacenter.latitude).toBe('number');
+      expect(typeof res.body.datacenter.longitude).toBe('number');
+      expect(Array.isArray(res.body.datacenter.ipRanges)).toBe(true);
+      expect(typeof res.body.matchedRange).toBe('string');
+    }
+  }, 15000); // Increase timeout for API call
+
+  it('returns 200 but no match for an IP not in Zscaler ranges', async () => {
+    // Use a public IP that's unlikely to be in Zscaler ranges (e.g., Google DNS)
+    const res = await request(app).get('/api/lookup?cloud=zscaler.net&ip=8.8.8.8');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.datacenter).toBeNull();
+    expect(res.body.matchedRange).toBeNull();
+  }, 15000);
 });
 
 describe('POST /api/trace', () => {
@@ -114,6 +139,50 @@ describe('POST /api/trace', () => {
     expect(res.body.success).toBe(false);
     expect(res.body.error).toMatch(/Invalid IP address/);
   });
+
+  it('returns 200 with trace results for valid IPs', async () => {
+    const res = await request(app)
+      .post('/api/trace')
+      .send({ 
+        cloud: 'zscaler.net', 
+        ips: ['165.225.0.1', '8.8.8.8', '1.1.1.1'] 
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.results)).toBe(true);
+    expect(res.body.results.length).toBe(3);
+    
+    // Check structure of each result
+    res.body.results.forEach(result => {
+      expect(typeof result.ip).toBe('string');
+      expect(typeof result.hop).toBe('number');
+      // datacenter can be null or an object
+      if (result.datacenter) {
+        expect(typeof result.datacenter.name).toBe('string');
+        expect(typeof result.datacenter.city).toBe('string');
+        expect(typeof result.datacenter.country).toBe('string');
+      }
+    });
+  }, 15000); // Increase timeout for API call
+
+  it('returns 200 with empty matches for IPs not in Zscaler ranges', async () => {
+    const res = await request(app)
+      .post('/api/trace')
+      .send({ 
+        cloud: 'zscaler.net', 
+        ips: ['8.8.8.8', '1.1.1.1'] 
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.results)).toBe(true);
+    expect(res.body.results.length).toBe(2);
+    
+    // These IPs should not match Zscaler ranges
+    res.body.results.forEach(result => {
+      expect(result.datacenter).toBeNull();
+      expect(result.matchedRange).toBeNull();
+    });
+  }, 15000);
 });
 
 describe('POST /api/zdx/userpath', () => {

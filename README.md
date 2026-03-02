@@ -255,6 +255,55 @@ Health check endpoint for monitoring application status.
 }
 ```
 
+### `POST /api/zdx/userpath`
+
+Get the network path from a user's device to an application using the Zscaler Digital Experience (ZDX) API.
+
+**Prerequisites:**
+- ZDX API credentials configured (`ZDX_CLIENT_ID` and `ZDX_CLIENT_SECRET` environment variables)
+- User must have an active ZDX-monitored device
+- Application must have a Cloud Path Probe configured in the ZDX portal
+
+**Request Body:**
+```json
+{
+  "cloud": "zdxcloud",
+  "userEmail": "user@example.com",
+  "appName": "Office 365"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3000/api/zdx/userpath \
+  -H "Content-Type: application/json" \
+  -d '{"cloud":"zdxcloud","userEmail":"user@example.com","appName":"Office 365"}'
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "userEmail": "user@example.com",
+  "appName": "Office 365",
+  "deviceId": "device-123",
+  "path": [
+    {
+      "hop": 1,
+      "ip": "192.168.1.1",
+      "latency": 2.5,
+      "location": "United States"
+    },
+    {
+      "hop": 2,
+      "ip": "165.225.28.50",
+      "latency": 15.3,
+      "location": "Netherlands"
+    }
+  ]
+}
+```
+
 ## Development
 
 ### Project Structure
@@ -291,6 +340,11 @@ zscaler/
 
 - `PORT` - Server port (default: 3000)
 - `CACHE_DURATION` - How long to cache Zscaler data in milliseconds (default: 3600000 - 1 hour)
+- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: allow all). Example: `https://example.com,https://app.example.com`
+- `SSL_KEY_PATH` - Path to SSL private key file for HTTPS (optional)
+- `SSL_CERT_PATH` - Path to SSL certificate file for HTTPS (optional)
+- `ZDX_CLIENT_ID` - ZDX API client ID (required for `/api/zdx/userpath` endpoint)
+- `ZDX_CLIENT_SECRET` - ZDX API client secret (required for `/api/zdx/userpath` endpoint)
 
 ### Docker Configuration
 

@@ -4,8 +4,12 @@
  * Convert IP address string to unsigned 32-bit integer for range comparison
  * @param {string} ip - IPv4 address string (e.g., "192.168.1.1")
  * @returns {number} Unsigned 32-bit integer representation
+ * @throws {TypeError} If ip is null, undefined, or not a string
  */
 function ipToInt(ip) {
+  if (ip == null || typeof ip !== 'string' || ip === '') {
+    throw new TypeError('IP address must be a non-empty string');
+  }
   const parts = ip.split('.');
   return ((parseInt(parts[0]) << 24) +
          (parseInt(parts[1]) << 16) +
@@ -17,10 +21,24 @@ function ipToInt(ip) {
  * Parse CIDR notation to an IP range object
  * @param {string} cidr - CIDR notation string (e.g., "192.168.1.0/24")
  * @returns {{ start: number, end: number, cidr: string }} IP range with start/end as unsigned ints
+ * @throws {TypeError} If cidr is null, undefined, or not a string
+ * @throws {Error} If CIDR format is invalid or prefix length is out of range
  */
 function parseCidr(cidr) {
+  if (cidr == null || typeof cidr !== 'string' || cidr === '') {
+    throw new TypeError('CIDR must be a non-empty string');
+  }
+  
+  if (!cidr.includes('/')) {
+    throw new Error('Invalid CIDR format: missing "/" separator');
+  }
+  
   const [ip, bits] = cidr.split('/');
   const prefixLength = parseInt(bits);
+  
+  if (isNaN(prefixLength) || prefixLength < 0 || prefixLength > 32) {
+    throw new Error(`Invalid CIDR prefix length: must be 0-32, got "${bits}"`);
+  }
 
   const mask = (-1 << (32 - prefixLength)) >>> 0;
   const ipInt = ipToInt(ip);
@@ -48,6 +66,10 @@ function isIpInRange(ip, range) {
  * @returns {boolean} True if the string is a valid IPv4 address
  */
 function isValidIp(ip) {
+  if (ip == null || typeof ip !== 'string' || ip === '') {
+    return false;
+  }
+  
   const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
   const match = ip.match(ipv4Regex);
 
