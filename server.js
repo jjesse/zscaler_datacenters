@@ -73,7 +73,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static('public', {
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+    if (process.env.NODE_ENV === 'development') {
+      // In development, disable caching for instant updates
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
       res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
     } else if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache');

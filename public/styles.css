@@ -4,6 +4,7 @@
     --success-color: #28a745;
     --error-color: #dc3545;
     --warning-color: #ffc107;
+    --accent-orange: #e65100;
     --bg-color: #f5f7fa;
     --card-bg: #ffffff;
     --text-primary: #2c3e50;
@@ -25,6 +26,7 @@
     --success-color: #5cb85c;
     --error-color: #e74c3c;
     --warning-color: #f39c12;
+    --accent-orange: #ff9800;
     --bg-color: #1a1d2e;
     --card-bg: #252836;
     --text-primary: #e4e6eb;
@@ -520,17 +522,17 @@ footer a:hover {
 
 [data-theme="dark"] .distance-info {
     background: linear-gradient(135deg, #332a1a 0%, #3d2f1a 100%);
-    border-left: 3px solid #ff9800;
+    border-left: 3px solid var(--accent-orange);
 }
 
 .distance-info .info-label {
-    color: #e65100;
+    color: var(--accent-orange);
 }
 
 .highlight-distance {
     font-size: 1.15rem;
     font-weight: 700;
-    color: #e65100;
+    color: var(--accent-orange);
 }
 
 /* Distance Label on Map */
@@ -541,26 +543,26 @@ footer a:hover {
 
 [data-theme="light"] .distance-text {
     background: rgba(255, 255, 255, 0.95);
-    color: #0066cc;
+    color: var(--primary-color);
     padding: 6px 12px;
     border-radius: 20px;
     font-weight: 700;
     font-size: 0.9rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    border: 2px solid #0066cc;
+    border: 2px solid var(--primary-color);
     white-space: nowrap;
     text-align: center;
 }
 
 [data-theme="dark"] .distance-text {
     background: rgba(37, 40, 54, 0.95);
-    color: #4da6ff;
+    color: var(--primary-color);
     padding: 6px 12px;
     border-radius: 20px;
     font-weight: 700;
     font-size: 0.9rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    border: 2px solid #4da6ff;
+    border: 2px solid var(--primary-color);
     white-space: nowrap;
     text-align: center;
 }
@@ -641,7 +643,7 @@ footer a:hover {
 }
 
 .hop-distance {
-    color: #e65100;
+    color: var(--accent-orange);
     font-size: 0.9rem;
     font-weight: 600;
 }
