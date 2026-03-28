@@ -7,7 +7,7 @@
  * @throws {TypeError} If ip is null, undefined, or not a string
  */
 function ipToInt(ip) {
-  if (ip == null || typeof ip !== 'string' || ip === '') {
+  if (ip === null || ip === undefined || typeof ip !== 'string' || ip === '') {
     throw new TypeError('IP address must be a non-empty string');
   }
   const parts = ip.split('.');
@@ -25,7 +25,7 @@ function ipToInt(ip) {
  * @throws {Error} If CIDR format is invalid or prefix length is out of range
  */
 function parseCidr(cidr) {
-  if (cidr == null || typeof cidr !== 'string' || cidr === '') {
+  if (cidr === null || cidr === undefined || typeof cidr !== 'string' || cidr === '') {
     throw new TypeError('CIDR must be a non-empty string');
   }
   
@@ -40,7 +40,9 @@ function parseCidr(cidr) {
     throw new Error(`Invalid CIDR prefix length: must be 0-32, got "${bits}"`);
   }
 
-  const mask = (-1 << (32 - prefixLength)) >>> 0;
+  // Special case: prefixLength=0 means match-all (mask=0). JavaScript's bitwise
+  // shift is mod-32, so (-1 << 32) === -1 (not 0), producing the wrong mask.
+  const mask = prefixLength === 0 ? 0 : ((-1 << (32 - prefixLength)) >>> 0);
   const ipInt = ipToInt(ip);
   const start = (ipInt & mask) >>> 0;
   const hostMask = ~mask >>> 0;
@@ -66,7 +68,7 @@ function isIpInRange(ip, range) {
  * @returns {boolean} True if the string is a valid IPv4 address
  */
 function isValidIp(ip) {
-  if (ip == null || typeof ip !== 'string' || ip === '') {
+  if (ip === null || ip === undefined || typeof ip !== 'string' || ip === '') {
     return false;
   }
   
