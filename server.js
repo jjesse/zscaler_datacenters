@@ -503,6 +503,15 @@ app.post('/api/zdx/userpath', async (req, res) => {
     });
   }
 
+  // Validate email format (RFC 5321 basic structure check)
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  if (!emailRegex.test(userEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid email address format'
+    });
+  }
+
   if (!ZDX_CLOUDS.includes(cloud)) {
     return res.status(400).json({
       success: false,
@@ -525,8 +534,12 @@ app.post('/api/zdx/userpath', async (req, res) => {
   try {
     // 1. Get authentication token
     const authUrl = `https://api.${cloud}.net/v1/oauth/token`;
-    const authResponse = await axios.post(authUrl, 
-      `grant_type=client_credentials&client_id=${zdxClientId}&client_secret=${zdxClientSecret}`,
+    const authParams = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: zdxClientId,
+      client_secret: zdxClientSecret
+    });
+    const authResponse = await axios.post(authUrl, authParams.toString(),
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'

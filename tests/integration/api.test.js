@@ -204,6 +204,15 @@ describe('POST /api/zdx/userpath', () => {
     expect(res.body.error).toMatch(/Invalid ZDX cloud/);
   });
 
+  it('returns 400 for an invalid email address format', async () => {
+    const res = await request(app)
+      .post('/api/zdx/userpath')
+      .send({ cloud: 'zdxcloud', userEmail: 'not-an-email', appName: 'MyApp' });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Invalid email address format/);
+  });
+
   it('returns 500 when ZDX credentials are not configured', async () => {
     const origClientId = process.env.ZDX_CLIENT_ID;
     const origClientSecret = process.env.ZDX_CLIENT_SECRET;
