@@ -335,12 +335,17 @@ app.get('/api/lookup', async (req, res) => {
         success: true,
         ip,
         cloud,
-        datacenter: result.datacenter,
-        city: result.city,
-        continent: result.continent,
-        range: result.range,
-        latitude: result.latitude,
-        longitude: result.longitude
+        datacenter: {
+          name: result.datacenter,
+          city: result.city,
+          // CENR data has no country-level field; continent is used to satisfy the API contract
+          country: result.continent,
+          latitude: result.latitude !== null ? parseFloat(result.latitude) : null,
+          longitude: result.longitude !== null ? parseFloat(result.longitude) : null,
+          ipRanges: [result.range]
+        },
+        matchedRange: result.range,
+        continent: result.continent
       };
 
       if (clientLocation) {
@@ -365,10 +370,11 @@ app.get('/api/lookup', async (req, res) => {
       res.json(response);
     } else {
       res.json({
-        success: false,
+        success: true,
         ip,
         cloud,
-        error: 'IP address not found in any datacenter for this cloud'
+        datacenter: null,
+        matchedRange: null
       });
     }
   } catch (error) {
@@ -427,56 +433,65 @@ app.post('/api/trace', async (req, res) => {
   try {
     const zscalerData = await fetchZscalerData(cloud);
 
-    const hops = [];
+    const results = [];
     let totalDistance = 0;
-    let previousHop = null;
+    let prevLatitude = null;
+    let prevLongitude = null;
 
-    for (const ip of ips) {
+    for (let hopIndex = 0; hopIndex < ips.length; hopIndex++) {
+      const ip = ips[hopIndex];
       const zscalerResult = lookupIp(ip, zscalerData);
       const geoLocation = await getIpGeolocation(ip);
 
-      const hop = { ip, found: false };
+      const result = {
+        ip,
+        hop: hopIndex + 1,
+        datacenter: null,
+        matchedRange: null
+      };
+
+      let latitude = null;
+      let longitude = null;
 
       if (zscalerResult) {
-        hop.found = true;
-        hop.datacenter = zscalerResult.datacenter;
-        hop.city = zscalerResult.city;
-        hop.continent = zscalerResult.continent;
-        hop.range = zscalerResult.range;
-        hop.latitude = zscalerResult.latitude;
-        hop.longitude = zscalerResult.longitude;
+        result.datacenter = {
+          name: zscalerResult.datacenter,
+          city: zscalerResult.city,
+          // CENR data has no country-level field; continent is used to satisfy the API contract
+          country: zscalerResult.continent
+        };
+        result.matchedRange = zscalerResult.range;
+        latitude = zscalerResult.latitude ? parseFloat(zscalerResult.latitude) : null;
+        longitude = zscalerResult.longitude ? parseFloat(zscalerResult.longitude) : null;
       } else if (geoLocation) {
-        hop.found = true;
-        hop.city = geoLocation.city;
-        hop.country = geoLocation.country;
-        hop.latitude = geoLocation.latitude;
-        hop.longitude = geoLocation.longitude;
+        result.city = geoLocation.city;
+        result.country = geoLocation.country;
+        latitude = geoLocation.latitude;
+        longitude = geoLocation.longitude;
       }
 
-      if (previousHop && previousHop.latitude && previousHop.longitude &&
-          hop.latitude && hop.longitude) {
-        const distance = calculateDistance(
-          parseFloat(previousHop.latitude),
-          parseFloat(previousHop.longitude),
-          parseFloat(hop.latitude),
-          parseFloat(hop.longitude)
-        );
-        hop.distanceFromPrevious = distance;
+      if (latitude !== null) result.latitude = latitude;
+      if (longitude !== null) result.longitude = longitude;
+
+      if (prevLatitude !== null && prevLongitude !== null && latitude !== null && longitude !== null) {
+        const distance = calculateDistance(prevLatitude, prevLongitude, latitude, longitude);
+        result.distanceFromPrevious = distance;
         totalDistance += distance;
       }
 
-      hops.push(hop);
-      previousHop = hop;
+      prevLatitude = latitude;
+      prevLongitude = longitude;
+      results.push(result);
     }
 
     res.json({
       success: true,
       cloud,
-      hops,
-      totalHops: hops.length,
+      results,
+      totalResults: results.length,
       totalDistance: totalDistance > 0 ? totalDistance : null,
       totalDistanceMiles: totalDistance > 0 ? Math.round(totalDistance * 0.621371 * 10) / 10 : null,
-      foundHops: hops.filter(h => h.found).length
+      foundResults: results.filter(r => r.datacenter !== null).length
     });
   } catch (error) {
     console.error('Trace route error:', error);

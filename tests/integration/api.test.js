@@ -1,7 +1,32 @@
 'use strict';
 
+// Mock axios to avoid real network calls and make tests deterministic
+jest.mock('axios');
+
 const request = require('supertest');
+const axios = require('axios');
 const app = require('../../server');
+
+// Mock CENR data – 165.225.0.0/16 covers 165.225.0.1; 8.8.8.8 and 1.1.1.1 are not included
+const MOCK_CENR_DATA = {
+  'zscaler.net': {
+    'continent : Americas': {
+      'city : Dallas': [
+        { range: '165.225.0.0/16', latitude: '32.783', longitude: '-96.806' }
+      ]
+    }
+  }
+};
+
+beforeAll(() => {
+  axios.get.mockImplementation((url) => {
+    if (url.startsWith('https://config.zscaler.com/')) {
+      return Promise.resolve({ data: MOCK_CENR_DATA });
+    }
+    // ip-api.com and any other URL: return a failed geolocation response
+    return Promise.resolve({ data: { status: 'fail' } });
+  });
+});
 
 describe('GET /api/health', () => {
   it('returns 200 with healthy status', async () => {
