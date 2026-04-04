@@ -238,6 +238,25 @@ describe('POST /api/zdx/userpath', () => {
     expect(res.body.error).toMatch(/Invalid email address format/);
   });
 
+  it('returns 400 when appName exceeds 200 characters', async () => {
+    const longName = 'A'.repeat(201);
+    const res = await request(app)
+      .post('/api/zdx/userpath')
+      .send({ cloud: 'zdxcloud', userEmail: 'user@example.com', appName: longName });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Invalid appName/);
+  });
+
+  it('returns 400 when appName contains control characters', async () => {
+    const res = await request(app)
+      .post('/api/zdx/userpath')
+      .send({ cloud: 'zdxcloud', userEmail: 'user@example.com', appName: 'App\x00Name' });
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Invalid appName/);
+  });
+
   it('returns 500 when ZDX credentials are not configured', async () => {
     const origClientId = process.env.ZDX_CLIENT_ID;
     const origClientSecret = process.env.ZDX_CLIENT_SECRET;
@@ -257,5 +276,58 @@ describe('POST /api/zdx/userpath', () => {
     expect(res.status).toBe(500);
     expect(res.body.success).toBe(false);
     expect(res.body.needsConfig).toBe(true);
+  });
+});
+
+describe('TRUST_PROXY / getClientIp behaviour', () => {
+  // Restore trust proxy setting and default axios mock after each test to
+  // avoid cross-test pollution.
+  afterEach(() => {
+    app.set('trust proxy', false);
+    axios.get.mockImplementation((url) => {
+      if (url.startsWith('https://config.zscaler.com/')) {
+        return Promise.resolve({ data: MOCK_CENR_DATA });
+      }
+      return Promise.resolve({ data: { status: 'fail' } });
+    });
+  });
+
+  it('ignores X-Forwarded-For when trust proxy is not configured', async () => {
+    // With no trust proxy, req.ip falls back to the socket address (127.0.0.1 /
+    // ::1 in test), which is a private/loopback address and yields no geolocation.
+    const res = await request(app)
+      .get('/api/lookup?cloud=zscaler.net&ip=165.225.0.1')
+      .set('X-Forwarded-For', '5.5.5.5');
+
+    expect(res.status).toBe(200);
+    // clientIp is only present when geolocation succeeds; it must not be set
+    // here because the spoofed X-Forwarded-For value should have been ignored.
+    expect(res.body.clientIp).toBeUndefined();
+  });
+
+  it('uses X-Forwarded-For IP when trust proxy is configured', async () => {
+    // Enable trust proxy (equivalent to TRUST_PROXY=1 at startup).
+    app.set('trust proxy', 1);
+
+    // Return successful geolocation for the X-Forwarded-For IP.
+    axios.get.mockImplementation((url) => {
+      if (url.startsWith('https://config.zscaler.com/')) {
+        return Promise.resolve({ data: MOCK_CENR_DATA });
+      }
+      if (url.includes('/json/5.5.5.5')) {
+        return Promise.resolve({
+          data: { status: 'success', query: '5.5.5.5', city: 'TestCity', country: 'US', lat: 10, lon: 20 }
+        });
+      }
+      return Promise.resolve({ data: { status: 'fail' } });
+    });
+
+    const res = await request(app)
+      .get('/api/lookup?cloud=zscaler.net&ip=165.225.0.1')
+      .set('X-Forwarded-For', '5.5.5.5');
+
+    expect(res.status).toBe(200);
+    // With trust proxy enabled, the X-Forwarded-For IP is used for geolocation.
+    expect(res.body.clientIp).toBe('5.5.5.5');
   });
 });
