@@ -17,12 +17,22 @@ const app = express();
 
 // Configure trust proxy so that X-Forwarded-For / X-Real-IP headers are only
 // honoured when the app is explicitly deployed behind a trusted reverse proxy.
-// Set TRUST_PROXY to a hop count (e.g. "1") or a named preset ("loopback").
+// Set TRUST_PROXY to a hop count (e.g. "1") or a named preset ("loopback",
+// "linklocal", "uniquelocal").
 // Leave unset for direct/public deployments to prevent IP-spoofing and
 // rate-limit bypass via forged headers.
 if (process.env.TRUST_PROXY) {
+  const VALID_PRESETS = new Set(['loopback', 'linklocal', 'uniquelocal']);
   const n = parseInt(process.env.TRUST_PROXY, 10);
-  app.set('trust proxy', isNaN(n) ? process.env.TRUST_PROXY : n);
+  if (!isNaN(n)) {
+    app.set('trust proxy', n);
+  } else if (VALID_PRESETS.has(process.env.TRUST_PROXY)) {
+    app.set('trust proxy', process.env.TRUST_PROXY);
+  } else {
+    console.warn(`Invalid TRUST_PROXY value "${process.env.TRUST_PROXY}". ` +
+      `Use a hop count (integer) or one of: ${[...VALID_PRESETS].join(', ')}. ` +
+      'Proxy headers will NOT be trusted.');
+  }
 }
 
 const PORT = process.env.PORT || 3000;
@@ -256,6 +266,13 @@ function getClientIp(req) {
  * @returns {Promise<object|null>} Geolocation data or null
  */
 async function getIpGeolocation(ip) {
+  // Validate the input is a well-formed IPv4 address before using it in a URL.
+  // This is defence-in-depth: callers already validate, but this prevents any
+  // unexpected value (e.g. from a third-party API) from reaching the URL.
+  if (!isValidIp(ip)) {
+    return null;
+  }
+
   // Check for private IP ranges (RFC 1918)
   if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     return null;
