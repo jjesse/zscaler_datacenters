@@ -23,14 +23,16 @@ const app = express();
 // rate-limit bypass via forged headers.
 if (process.env.TRUST_PROXY) {
   const VALID_PRESETS = new Set(['loopback', 'linklocal', 'uniquelocal']);
-  const n = parseInt(process.env.TRUST_PROXY, 10);
-  if (!isNaN(n)) {
-    app.set('trust proxy', n);
-  } else if (VALID_PRESETS.has(process.env.TRUST_PROXY)) {
-    app.set('trust proxy', process.env.TRUST_PROXY);
+  const trustProxy = process.env.TRUST_PROXY;
+  const isValidHopCount = /^(0|[1-9]\d*)$/.test(trustProxy);
+
+  if (isValidHopCount) {
+    app.set('trust proxy', parseInt(trustProxy, 10));
+  } else if (VALID_PRESETS.has(trustProxy)) {
+    app.set('trust proxy', trustProxy);
   } else {
-    console.warn(`Invalid TRUST_PROXY value "${process.env.TRUST_PROXY}". ` +
-      `Use a hop count (integer) or one of: ${[...VALID_PRESETS].join(', ')}. ` +
+    console.warn(`Invalid TRUST_PROXY value "${trustProxy}". ` +
+      `Use a non-negative integer hop count or one of: ${[...VALID_PRESETS].join(', ')}. ` +
       'Proxy headers will NOT be trusted.');
   }
 }
@@ -237,26 +239,12 @@ function lookupIp(ip, zscalerData) {
  * @returns {string} Client IPv4 address
  */
 function getClientIp(req) {
-  // Only trust proxy-injected headers when the app is explicitly configured
-  // to run behind a trusted reverse proxy (TRUST_PROXY env var).  Without this
-  // guard, any caller could forge X-Forwarded-For to spoof their source IP and
-  // bypass the rate limiter.
-  if (app.get('trust proxy')) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-      const candidate = forwarded.split(',')[0].trim();
-      if (isValidIp(candidate)) {
-        return candidate;
-      }
-    }
-
-    const realIp = req.headers['x-real-ip'];
-    if (realIp && isValidIp(realIp.trim())) {
-      return realIp.trim();
-    }
-  }
-
-  return req.socket.remoteAddress || '127.0.0.1';
+  // Use req.ip which applies Express's built-in trust proxy logic.
+  // When TRUST_PROXY is set, Express correctly peels off the trusted hops from
+  // X-Forwarded-For, preventing a spoofed extra entry from bypassing the rate
+  // limiter.  When trust proxy is disabled (default), req.ip returns the direct
+  // socket address, ignoring any forwarded headers entirely.
+  return req.ip || req.socket.remoteAddress || '127.0.0.1';
 }
 
 /**
