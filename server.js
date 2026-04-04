@@ -14,6 +14,17 @@ const { isValidIp, parseCidr, isIpInRange } = require('./utils/ip');
 const { calculateDistance } = require('./utils/distance');
 
 const app = express();
+
+// Configure trust proxy so that X-Forwarded-For / X-Real-IP headers are only
+// honoured when the app is explicitly deployed behind a trusted reverse proxy.
+// Set TRUST_PROXY to a hop count (e.g. "1") or a named preset ("loopback").
+// Leave unset for direct/public deployments to prevent IP-spoofing and
+// rate-limit bypass via forged headers.
+if (process.env.TRUST_PROXY) {
+  const n = parseInt(process.env.TRUST_PROXY, 10);
+  app.set('trust proxy', isNaN(n) ? process.env.TRUST_PROXY : n);
+}
+
 const PORT = process.env.PORT || 3000;
 const CACHE_DURATION = process.env.CACHE_DURATION || 3600000; // 1 hour default
 
@@ -62,7 +73,7 @@ app.use(helmet({
         "'unsafe-inline'" // required by Leaflet inline styles
       ],
       imgSrc: ["'self'", 'data:', 'https://*.tile.openstreetmap.org'],
-      connectSrc: ["'self'", 'http://ip-api.com'],
+      connectSrc: ["'self'"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -217,17 +228,23 @@ function lookupIp(ip, zscalerData) {
  * @returns {string} Client IPv4 address
  */
 function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const candidate = forwarded.split(',')[0].trim();
-    if (isValidIp(candidate)) {
-      return candidate;
+  // Only trust proxy-injected headers when the app is explicitly configured
+  // to run behind a trusted reverse proxy (TRUST_PROXY env var).  Without this
+  // guard, any caller could forge X-Forwarded-For to spoof their source IP and
+  // bypass the rate limiter.
+  if (app.get('trust proxy')) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const candidate = forwarded.split(',')[0].trim();
+      if (isValidIp(candidate)) {
+        return candidate;
+      }
     }
-  }
 
-  const realIp = req.headers['x-real-ip'];
-  if (realIp && isValidIp(realIp.trim())) {
-    return realIp.trim();
+    const realIp = req.headers['x-real-ip'];
+    if (realIp && isValidIp(realIp.trim())) {
+      return realIp.trim();
+    }
   }
 
   return req.socket.remoteAddress || '127.0.0.1';
@@ -253,7 +270,7 @@ async function getIpGeolocation(ip) {
   }
 
   try {
-    const response = await axios.get(`http://ip-api.com/json/${ip}`, {
+    const response = await axios.get(`https://ip-api.com/json/${ip}`, {
       timeout: 3000,
       params: {
         fields: 'status,message,country,city,lat,lon,query'
@@ -593,8 +610,7 @@ app.post('/api/zdx/userpath', async (req, res) => {
     if (!targetApp) {
       return res.status(404).json({
         success: false,
-        error: `Application not found: ${appName}`,
-        availableApps: appsResponse.data.map(a => a.name).slice(0, 10)
+        error: `Application not found: ${appName}`
       });
     }
 
@@ -667,7 +683,8 @@ app.post('/api/zdx/userpath', async (req, res) => {
     console.error('ZDX API Error:', error.response?.data || error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      error: error.response?.data?.message || error.message || 'Failed to fetch ZDX user path data'
+      error: 'Failed to fetch ZDX user path data',
+      ...(process.env.NODE_ENV !== 'production' && { message: error.response?.data?.message || error.message })
     });
   }
 });
