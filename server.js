@@ -14,6 +14,27 @@ const { isValidIp, parseCidr, isIpInRange } = require('./utils/ip');
 const { calculateDistance } = require('./utils/distance');
 
 const app = express();
+
+// Configure trust proxy so that X-Forwarded-For / X-Real-IP headers are only
+// honoured when the app is explicitly deployed behind a trusted reverse proxy.
+// Set TRUST_PROXY to a hop count (e.g. "1") or a named preset ("loopback",
+// "linklocal", "uniquelocal").
+// Leave unset for direct/public deployments to prevent IP-spoofing and
+// rate-limit bypass via forged headers.
+if (process.env.TRUST_PROXY) {
+  const VALID_PRESETS = new Set(['loopback', 'linklocal', 'uniquelocal']);
+  const n = parseInt(process.env.TRUST_PROXY, 10);
+  if (!isNaN(n)) {
+    app.set('trust proxy', n);
+  } else if (VALID_PRESETS.has(process.env.TRUST_PROXY)) {
+    app.set('trust proxy', process.env.TRUST_PROXY);
+  } else {
+    console.warn(`Invalid TRUST_PROXY value "${process.env.TRUST_PROXY}". ` +
+      `Use a hop count (integer) or one of: ${[...VALID_PRESETS].join(', ')}. ` +
+      'Proxy headers will NOT be trusted.');
+  }
+}
+
 const PORT = process.env.PORT || 3000;
 const CACHE_DURATION = process.env.CACHE_DURATION || 3600000; // 1 hour default
 
@@ -53,8 +74,7 @@ app.use(helmet({
       scriptSrc: [
         "'self'",
         'https://unpkg.com',
-        'https://cdnjs.cloudflare.com',
-        "'unsafe-eval'" // required by Leaflet
+        'https://cdnjs.cloudflare.com'
       ],
       styleSrc: [
         "'self'",
@@ -62,7 +82,7 @@ app.use(helmet({
         "'unsafe-inline'" // required by Leaflet inline styles
       ],
       imgSrc: ["'self'", 'data:', 'https://*.tile.openstreetmap.org'],
-      connectSrc: ["'self'", 'http://ip-api.com'],
+      connectSrc: ["'self'"], // ip-api.com is called server-side only; no browser fetch needed
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -217,17 +237,23 @@ function lookupIp(ip, zscalerData) {
  * @returns {string} Client IPv4 address
  */
 function getClientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const candidate = forwarded.split(',')[0].trim();
-    if (isValidIp(candidate)) {
-      return candidate;
+  // Only trust proxy-injected headers when the app is explicitly configured
+  // to run behind a trusted reverse proxy (TRUST_PROXY env var).  Without this
+  // guard, any caller could forge X-Forwarded-For to spoof their source IP and
+  // bypass the rate limiter.
+  if (app.get('trust proxy')) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      const candidate = forwarded.split(',')[0].trim();
+      if (isValidIp(candidate)) {
+        return candidate;
+      }
     }
-  }
 
-  const realIp = req.headers['x-real-ip'];
-  if (realIp && isValidIp(realIp.trim())) {
-    return realIp.trim();
+    const realIp = req.headers['x-real-ip'];
+    if (realIp && isValidIp(realIp.trim())) {
+      return realIp.trim();
+    }
   }
 
   return req.socket.remoteAddress || '127.0.0.1';
@@ -239,6 +265,13 @@ function getClientIp(req) {
  * @returns {Promise<object|null>} Geolocation data or null
  */
 async function getIpGeolocation(ip) {
+  // Validate the input is a well-formed IPv4 address before using it in a URL.
+  // This is defence-in-depth: callers already validate, but this prevents any
+  // unexpected value (e.g. from a third-party API) from reaching the URL.
+  if (!isValidIp(ip)) {
+    return null;
+  }
+
   // Check for private IP ranges (RFC 1918)
   if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     return null;
@@ -253,7 +286,7 @@ async function getIpGeolocation(ip) {
   }
 
   try {
-    const response = await axios.get(`http://ip-api.com/json/${ip}`, {
+    const response = await axios.get(`https://ip-api.com/json/${ip}`, {
       timeout: 3000,
       params: {
         fields: 'status,message,country,city,lat,lon,query'
@@ -518,6 +551,14 @@ app.post('/api/zdx/userpath', async (req, res) => {
     });
   }
 
+  // Validate appName length and allowed characters (printable ASCII, no control characters)
+  if (typeof appName !== 'string' || appName.length > 200 || /[\x00-\x1F\x7F]/.test(appName)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid appName: must be a printable string of at most 200 characters'
+    });
+  }
+
   // Validate email format (RFC 5321 basic structure check)
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   if (!emailRegex.test(userEmail)) {
@@ -593,8 +634,7 @@ app.post('/api/zdx/userpath', async (req, res) => {
     if (!targetApp) {
       return res.status(404).json({
         success: false,
-        error: `Application not found: ${appName}`,
-        availableApps: appsResponse.data.map(a => a.name).slice(0, 10)
+        error: `Application not found: ${appName}`
       });
     }
 
@@ -667,7 +707,8 @@ app.post('/api/zdx/userpath', async (req, res) => {
     console.error('ZDX API Error:', error.response?.data || error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      error: error.response?.data?.message || error.message || 'Failed to fetch ZDX user path data'
+      error: 'Failed to fetch ZDX user path data',
+      ...(process.env.NODE_ENV !== 'production' && { message: error.response?.data?.message || error.message })
     });
   }
 });
