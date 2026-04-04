@@ -342,14 +342,14 @@ function showMap(datacenterLat, datacenterLng, datacenterName, clientLat, client
     // Add datacenter marker
     datacenterMarker = L.marker([datacenterLat, datacenterLng], { icon: datacenterIcon })
         .addTo(map)
-        .bindPopup(`<b>🏢 ${datacenterName}</b><br>Zscaler Datacenter<br>Lat: ${datacenterLat}<br>Lng: ${datacenterLng}`)
+        .bindPopup(`<b>🏢 ${escapeHtml(datacenterName)}</b><br>Zscaler Datacenter<br>Lat: ${datacenterLat}<br>Lng: ${datacenterLng}`)
         .openPopup();
     
     // Add client marker and traffic flow line if client location is available
     if (clientLat && clientLng) {
         clientMarker = L.marker([clientLat, clientLng], { icon: clientIcon })
             .addTo(map)
-            .bindPopup(`<b>📍 ${clientName}</b><br>Your Location<br>Lat: ${clientLat}<br>Lng: ${clientLng}`);
+            .bindPopup(`<b>📍 ${escapeHtml(clientName)}</b><br>Your Location<br>Lat: ${clientLat}<br>Lng: ${clientLng}`);
         
         // Draw traffic flow line
         flowLine = L.polyline(
@@ -709,9 +709,9 @@ function showTraceMap(hops) {
             .addTo(traceMap)
             .bindPopup(`
                 <b>Hop ${index + 1}</b><br>
-                IP: ${hop.ip}<br>
-                ${hop.datacenter || hop.city || 'Unknown location'}<br>
-                ${hop.country ? hop.country + '<br>' : ''}
+                IP: ${escapeHtml(hop.ip)}<br>
+                ${escapeHtml(hop.datacenter || hop.city || 'Unknown location')}<br>
+                ${hop.country ? escapeHtml(hop.country) + '<br>' : ''}
                 Lat: ${lat}, Lng: ${lng}
             `);
         
@@ -1208,10 +1208,10 @@ function renderZdxMap(hops) {
         
         marker.bindPopup(`
             <strong>Hop ${index + 1}</strong><br>
-            IP: ${hop.ip}<br>
-            Location: ${location}<br>
-            Latency: ${latency}<br>
-            Segment: ${hop.segment}
+            IP: ${escapeHtml(hop.ip)}<br>
+            Location: ${escapeHtml(location)}<br>
+            Latency: ${escapeHtml(latency)}<br>
+            Segment: ${escapeHtml(hop.segment)}
         `);
         
         zdxMarkers.push(marker);

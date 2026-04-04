@@ -74,8 +74,7 @@ app.use(helmet({
       scriptSrc: [
         "'self'",
         'https://unpkg.com',
-        'https://cdnjs.cloudflare.com',
-        "'unsafe-eval'" // required by Leaflet
+        'https://cdnjs.cloudflare.com'
       ],
       styleSrc: [
         "'self'",
