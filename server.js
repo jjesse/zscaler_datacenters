@@ -82,7 +82,7 @@ app.use(helmet({
         "'unsafe-inline'" // required by Leaflet inline styles
       ],
       imgSrc: ["'self'", 'data:', 'https://*.tile.openstreetmap.org'],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'"], // ip-api.com is called server-side only; no browser fetch needed
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
@@ -548,6 +548,14 @@ app.post('/api/zdx/userpath', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Missing required parameters: cloud, userEmail, and appName'
+    });
+  }
+
+  // Validate appName length and allowed characters (printable ASCII, no control characters)
+  if (typeof appName !== 'string' || appName.length > 200 || /[\x00-\x1F\x7F]/.test(appName)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid appName: must be a printable string of at most 200 characters'
     });
   }
 
