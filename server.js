@@ -256,6 +256,12 @@ function lookupIp(ip, zscalerData) {
   return null;
 }
 
+// Pre-computed private IPv6 ranges for geolocation filtering
+const IPV6_LOOPBACK = parseIpv6Cidr('::1/128');
+const IPV6_LINK_LOCAL = parseIpv6Cidr('fe80::/10');
+const IPV6_UNIQUE_LOCAL = parseIpv6Cidr('fc00::/7');
+const IPV6_UNSPECIFIED = parseIpv6Cidr('::/128');
+
 /**
  * Get client IP address from request, handling proxy headers
  * @param {import('express').Request} req - Express request object
@@ -282,14 +288,15 @@ async function getIpGeolocation(ip) {
   }
 
   if (isValidIpv6(ip)) {
-    // IPv6 private ranges: loopback (::1), link-local (fe80::/10),
-    // unique-local (fc00::/7), and the unspecified address (::)
-    const lower = ip.toLowerCase().split('%')[0];
-    if (lower === '::1' || lower === '::') return null;
-    // Link-local: fe80::/10 covers fe80:: through febf::
-    if (lower.startsWith('fe8') || lower.startsWith('fe9') ||
-        lower.startsWith('fea') || lower.startsWith('feb')) return null;
-    if (lower.startsWith('fc') || lower.startsWith('fd')) return null;
+    // IPv6 private ranges: loopback (::1/128), unspecified (::/128),
+    // link-local (fe80::/10), unique-local (fc00::/7)
+    const stripped = ip.split('%')[0]; // strip zone identifier
+    if (isIpv6InRange(stripped, IPV6_LOOPBACK) ||
+        isIpv6InRange(stripped, IPV6_UNSPECIFIED) ||
+        isIpv6InRange(stripped, IPV6_LINK_LOCAL) ||
+        isIpv6InRange(stripped, IPV6_UNIQUE_LOCAL)) {
+      return null;
+    }
   } else {
     // Check for private IP ranges (RFC 1918) – IPv4
     if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {

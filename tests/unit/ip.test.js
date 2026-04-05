@@ -232,6 +232,11 @@ describe('ipv6ToBigInt', () => {
   test('converts full address correctly', () => {
     expect(ipv6ToBigInt('2001:db8::1')).toBe(BigInt('0x20010db8000000000000000000000001'));
   });
+
+  test('converts IPv4-mapped IPv6 address correctly', () => {
+    // ::ffff:127.0.0.1 = 0x00000000000000000000ffff7f000001
+    expect(ipv6ToBigInt('::ffff:127.0.0.1')).toBe(BigInt('0x00000000000000000000ffff7f000001'));
+  });
 });
 
 describe('parseIpv6Cidr', () => {

@@ -20,13 +20,24 @@ function ipToInt(ip) {
 }
 
 /**
- * Expand a compressed IPv6 address to a 32-character hex string (no colons)
+ * Expand a compressed IPv6 address to a 32-character hex string (no colons).
+ * Handles IPv4-mapped IPv6 addresses (e.g., ::ffff:192.168.1.1).
  * @param {string} ip - IPv6 address (possibly compressed with ::)
  * @returns {string} 32-character lowercase hex string
  */
 function expandIpv6(ip) {
   // Strip zone identifier (e.g. fe80::1%eth0)
   const stripped = ip.split('%')[0];
+
+  // Handle IPv4-in-IPv6 addresses (e.g., ::ffff:192.168.1.1)
+  if (stripped.includes('.')) {
+    const lastColon = stripped.lastIndexOf(':');
+    const ipv4Part = stripped.slice(lastColon + 1);
+    const hexOctets = ipv4Part.split('.').map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('');
+    const hexGroups = hexOctets.slice(0, 4) + ':' + hexOctets.slice(4);
+    return expandIpv6(stripped.slice(0, lastColon + 1) + hexGroups);
+  }
+
   const halves = stripped.split('::');
   if (halves.length === 2) {
     const left = halves[0] ? halves[0].split(':') : [];
