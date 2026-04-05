@@ -67,7 +67,7 @@ function parseIpv6Cidr(cidr) {
     throw new Error(`Invalid IPv6 CIDR prefix length: must be 0-128, got "${bits}"`);
   }
   const BITS_128 = (1n << 128n) - 1n;
-  const mask = prefixLength === 0 ? 0n : (BITS_128 ^ ((1n << BigInt(128 - prefixLength)) - 1n));
+  const mask = BITS_128 ^ ((1n << BigInt(128 - prefixLength)) - 1n);
   const ipInt = ipv6ToBigInt(ip);
   const start = ipInt & mask;
   const end = start | (BITS_128 ^ mask);

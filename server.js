@@ -286,7 +286,8 @@ async function getIpGeolocation(ip) {
     // unique-local (fc00::/7), and the unspecified address (::)
     const lower = ip.toLowerCase().split('%')[0];
     if (lower === '::1' || lower === '::') return null;
-    if (lower.startsWith('fe80:') || lower.startsWith('fe9') ||
+    // Link-local: fe80::/10 covers fe80:: through febf::
+    if (lower.startsWith('fe8') || lower.startsWith('fe9') ||
         lower.startsWith('fea') || lower.startsWith('feb')) return null;
     if (lower.startsWith('fc') || lower.startsWith('fd')) return null;
   } else {
