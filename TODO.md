@@ -85,16 +85,56 @@ These items were flagged during automated code review but have not yet been addr
 - [x] Add `CHANGELOG.md` entries for PR #3 (optional HTTPS / HTTP fallback, `SSL_KEY_PATH`/`SSL_CERT_PATH` env vars) and PR #4 (SSRF fix for `/api/zdx/userpath`, ZDX credentials in `.env.example`, Python bug fixes in `zdx_geo_path.py`)
 - [x] Fix typos in `ZDX_Geo_Tracker.md` (e.g. "Environment", "scrip", "perofrm", "login" → "logic")
 
+## Documentation Gaps (New)
+- [ ] **[High]** Fix `openapi.yaml` `LookupFound` schema – the spec shows flat `datacenter`/`city`/`continent` top-level fields but the actual API response wraps them in a nested `datacenter` object since the refactor; update the schema to match
+- [ ] **[Medium]** Document `TRUST_PROXY` environment variable in `README.md` Configuration section (it is in `.env.example` but missing from the README table)
+- [ ] **[Medium]** Add a `requirements.txt` (or `pyproject.toml`) for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) to make dependency installation reproducible
+- [ ] **[Medium]** Document `zdx_oneapi_geopath.py` in `README_PYTHON.md` or a dedicated section (the OneAPI variant is undocumented)
+- [ ] **[Low]** Fix `CONTRIBUTING.md` project structure – `utils/distance.js` is absent from the tree listing
+
+## Infrastructure / Reliability (New)
+- [ ] **[High]** Align the Node.js version between `Dockerfile` (`node:18-alpine`) and CI workflow (`node-version: '20'`); upgrade `Dockerfile` base image to `node:20-alpine` (or 22 LTS) to keep them in sync and avoid running EOL Node 18 in production
+- [ ] **[High]** Change Docker Compose default port binding from `0.0.0.0:3000:3000` to `127.0.0.1:3000:3000` so the app is not exposed on all interfaces by default in production
+- [ ] **[High]** Add graceful shutdown handling in `server.js` – listen for `SIGTERM` / `SIGINT`, stop accepting new connections, and wait for in-flight requests to finish before exiting (`server.close()`)
+- [ ] **[Medium]** Add cache stampede protection – concurrent requests for the same un-cached cloud currently fire multiple parallel requests to the Zscaler API; use a pending-request map (promise coalescing) to deduplicate
+- [ ] **[Medium]** Add HTTP → HTTPS redirect when HTTPS certificates are configured, so clients that connect on the HTTP port are automatically redirected
+- [ ] **[Low]** Add a `.nvmrc` (or `.node-version`) file pinning the Node.js version for local development consistency
+
+## Code Quality (New)
+- [ ] **[High]** Fix incomplete private-IP prefix list in `zdx_oneapi_geopath.py` `get_country()` – the list ends at `172.25.` but RFC 1918 `172.16.0.0/12` covers up to `172.31.`; add `172.26.` through `172.31.` (or use the same octet-range check already in `server.js`)
+- [ ] **[Medium]** Add input length guards on query-string parameters in `/api/lookup` and `/api/trace` (currently `cloud` and `ip` have no maximum-length check; an arbitrarily long string passes validation and reaches downstream functions)
+- [ ] **[Medium]** Fix bare `except:` in `zdx_oneapi_geopath.py` `get_country()` – replace with `except Exception:` to avoid accidentally suppressing `SystemExit` and `KeyboardInterrupt`
+- [ ] **[Medium]** Add ESLint coverage for `public/app.js` (currently excluded via `--ignore-pattern public/`) – or add a separate browser-targeted ESLint config so frontend JS quality is enforced in CI
+- [ ] **[Low]** Promote `MAX_TRACE_IPS` (currently inline in the `/api/trace` route handler) to a top-level named constant alongside `PORT` and `CACHE_DURATION`
+- [ ] **[Low]** Fill in the `author` field in `package.json`
+
+## Security (New)
+- [ ] **[High]** Add Subresource Integrity (SRI) `integrity` attributes to CDN-loaded `<script>` and `<link>` tags in `public/index.html` (Leaflet, Leaflet-PolylineDecorator, html2canvas) to prevent supply-chain injection if unpkg.com or cdnjs.cloudflare.com is compromised
+- [ ] **[High]** Apply stricter rate limits to the `/api/zdx/userpath` endpoint – it makes up to 5 sequential external API calls per request, so the same 100 req/15 min budget that protects `/api/lookup` is disproportionately cheap for this endpoint
+- [ ] **[Medium]** Add a `Permissions-Policy` response header (via Helmet or manually) to restrict access to browser APIs such as geolocation, camera, and microphone that the app does not use
+
+## Testing (New)
+- [ ] **[Medium]** Add unit tests for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) covering the `get_country()` helper and argument parsing (use `pytest` + `unittest.mock`)
+- [ ] **[Medium]** Add a CI step for the Python scripts: install dependencies from `requirements.txt` and run `pytest`
+- [ ] **[Medium]** Add frontend unit/E2E tests for `public/app.js` (e.g., with Playwright or Puppeteer) – the frontend has zero automated test coverage today
+- [ ] **[Low]** Add a CI step to upload test coverage reports to a coverage service (e.g., Codecov or Coveralls) so coverage trends are visible on PRs
+
+## Features (New)
+- [ ] **[High]** Add IPv6 support – the app currently rejects all non-IPv4 addresses; Zscaler publishes IPv6 ranges in CENR data and users may query from IPv6 sources
+- [ ] **[Medium]** Add a `version` field to the `/api/health` response (read from `package.json`) so operators can confirm which build is running without inspecting the container image
+- [ ] **[Medium]** Add a per-cloud cache-refresh endpoint (e.g., `POST /api/cache/flush`) protected by a configurable admin token, so operators can force a data refresh without restarting the container
+- [ ] **[Medium]** Add shareable/bookmarkable URLs – push lookup parameters into the browser's query string (`history.pushState`) so results pages can be bookmarked or shared as links
+
 ## Future Enhancements (Optional)
-- [ ] Add reverse lookup (show all datacenters for a cloud)
-- [ ] Add history of recent lookups (local storage)
-- [ ] Add dark mode toggle
-- [ ] Add metrics/analytics
-- [ ] Add latency testing to datacenters
-- [ ] Add datacenter status/availability monitoring
-- [ ] Add multi-language support
-- [ ] Add keyboard shortcuts
-- [ ] Add sharing results via URL
+- [ ] **[Medium]** Add reverse lookup (show all datacenters for a cloud)
+- [ ] **[Medium]** Add latency testing to datacenters
+- [ ] **[Medium]** Add datacenter status/availability monitoring
+- [ ] **[Low]** Add history of recent lookups (local storage)
+- [ ] **[Low]** Add metrics/analytics
+- [ ] **[Low]** Add sharing results via URL
+- [ ] **[Low]** Add dark mode toggle
+- [ ] **[Low]** Add multi-language support
+- [ ] **[Low]** Add keyboard shortcuts
 
 ## Security Improvements
 - [x] Add rate limiting middleware (express-rate-limit) to all API endpoints
