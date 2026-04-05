@@ -746,4 +746,30 @@ if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
   });
 }
 
+// Graceful shutdown handler
+const _shutdownTimeoutMs = parseInt(process.env.SHUTDOWN_TIMEOUT_MS, 10);
+const SHUTDOWN_TIMEOUT_MS = Number.isFinite(_shutdownTimeoutMs) && _shutdownTimeoutMs > 0
+  ? _shutdownTimeoutMs
+  : 10000;
+if (process.env.SHUTDOWN_TIMEOUT_MS && SHUTDOWN_TIMEOUT_MS === 10000) {
+  console.warn(`Invalid SHUTDOWN_TIMEOUT_MS value "${process.env.SHUTDOWN_TIMEOUT_MS}". Using default 10000ms.`);
+}
+
+const shutdown = (signal) => {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  const forceExitTimer = setTimeout(() => {
+    console.error('Forcefully shutting down after timeout.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS).unref();
+
+  server.close(() => {
+    clearTimeout(forceExitTimer);
+    console.log('All connections closed. Exiting.');
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 module.exports = app; // Export for testing
