@@ -93,9 +93,9 @@ These items were flagged during automated code review but have not yet been addr
 - [ ] **[Low]** Fix `CONTRIBUTING.md` project structure – `utils/distance.js` is absent from the tree listing
 
 ## Infrastructure / Reliability (New)
-- [ ] **[High]** Align the Node.js version between `Dockerfile` (`node:18-alpine`) and CI workflow (`node-version: '20'`); upgrade `Dockerfile` base image to `node:20-alpine` (or 22 LTS) to keep them in sync and avoid running EOL Node 18 in production
-- [ ] **[High]** Change Docker Compose default port binding from `0.0.0.0:3000:3000` to `127.0.0.1:3000:3000` so the app is not exposed on all interfaces by default in production
-- [ ] **[High]** Add graceful shutdown handling in `server.js` – listen for `SIGTERM` / `SIGINT`, stop accepting new connections, and wait for in-flight requests to finish before exiting (`server.close()`)
+- [x] **[High]** Align the Node.js version between `Dockerfile` (`node:18-alpine`) and CI workflow (`node-version: '20'`); upgrade `Dockerfile` base image to `node:20-alpine` (or 22 LTS) to keep them in sync and avoid running EOL Node 18 in production
+- [x] **[High]** Change Docker Compose default port binding from `0.0.0.0:3000:3000` to `127.0.0.1:3000:3000` so the app is not exposed on all interfaces by default in production
+- [x] **[High]** Add graceful shutdown handling in `server.js` – listen for `SIGTERM` / `SIGINT`, stop accepting new connections, and wait for in-flight requests to finish before exiting (`server.close()`)
 - [ ] **[Medium]** Add cache stampede protection – concurrent requests for the same un-cached cloud currently fire multiple parallel requests to the Zscaler API; use a pending-request map (promise coalescing) to deduplicate
 - [ ] **[Medium]** Add HTTP → HTTPS redirect when HTTPS certificates are configured, so clients that connect on the HTTP port are automatically redirected
 - [ ] **[Low]** Add a `.nvmrc` (or `.node-version`) file pinning the Node.js version for local development consistency
