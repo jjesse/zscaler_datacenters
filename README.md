@@ -221,12 +221,16 @@ curl "http://localhost:3000/api/lookup?cloud=zscalerthree.net&ip=165.225.28.50&s
   "success": true,
   "ip": "165.225.28.50",
   "cloud": "zscalerthree.net",
-  "datacenter": "Amsterdam II",
-  "city": "Amsterdam II",
+  "datacenter": {
+    "name": "Amsterdam II",
+    "city": "Amsterdam II",
+    "country": "EMEA",
+    "latitude": 52.367573,
+    "longitude": 4.904139,
+    "ipRanges": ["165.225.28.0/23"]
+  },
+  "matchedRange": "165.225.28.0/23",
   "continent": "EMEA",
-  "range": "165.225.28.0/23",
-  "latitude": "52.367573",
-  "longitude": "4.904139",
   "clientIp": "8.8.8.8",
   "clientCity": "Ashburn",
   "clientCountry": "United States",
@@ -341,6 +345,7 @@ zscaler/
 - `PORT` - Server port (default: 3000)
 - `CACHE_DURATION` - How long to cache Zscaler data in milliseconds (default: 3600000 - 1 hour)
 - `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: allow all). Example: `https://example.com,https://app.example.com`
+- `TRUST_PROXY` - Controls Express's [trust proxy](https://expressjs.com/en/guide/behind-proxies.html) setting. Set to a hop count (e.g. `1`) or a named preset (`loopback`, `linklocal`, `uniquelocal`) when the app is deployed behind a reverse proxy. Leave unset for direct/public deployments to prevent IP-spoofing via forged headers.
 - `SSL_KEY_PATH` - Path to SSL private key file for HTTPS (optional)
 - `SSL_CERT_PATH` - Path to SSL certificate file for HTTPS (optional)
 - `ZDX_CLIENT_ID` - ZDX API client ID (required for `/api/zdx/userpath` endpoint)

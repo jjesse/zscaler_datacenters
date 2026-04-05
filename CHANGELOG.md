@@ -35,21 +35,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edge-case tests for null/undefined/empty inputs in IP utilities (PR #5).
 - Happy-path integration tests for `/api/lookup` and `/api/trace` endpoints (PR #5).
 - Extracted `calculateDistance` to dedicated `utils/distance.js` module (PR #5).
+- IPv6 address validation (`isValidIpv6`, `isValidAddress`) and range-matching (`parseIpv6Cidr`, `isIpv6InRange`) in `utils/ip.js` – the API and CENR lookup now support IPv6 addresses end-to-end.
+- Stricter rate limiter (20 req / 15 min) on `/api/zdx/userpath` – the endpoint makes up to 5 sequential external calls per request.
+- Subresource Integrity (SRI) `integrity` and `crossorigin="anonymous"` attributes on all CDN-loaded `<script>` and `<link>` tags in `public/index.html`.
+- `requirements.txt` for reproducible Python dependency installation.
+- OneAPI variant (`zdx_oneapi_geopath.py`) documented in `README_PYTHON.md`.
+- `TRUST_PROXY` environment variable documented in `README.md` Configuration section.
+- `utils/distance.js` added to the project structure in `CONTRIBUTING.md`.
+- `MAX_TRACE_IPS` promoted to a top-level named constant in `server.js`.
 
 ### Changed
 - Error responses in production no longer expose internal `error.message` details.
 - Cloud dropdown options are now populated dynamically from the backend.
 - CORS error handling now returns proper 403 response instead of 500 (PR #5).
 - RFC 1918 private IP check now correctly identifies `172.16.0.0/12` range only (PR #5).
+- `openapi.yaml` `LookupFound` schema now reflects the nested `datacenter` object returned by the API.
+- `openapi.yaml` `LookupNotFound` schema updated to match the actual server response (`success: true`, `datacenter: null`, `matchedRange: null`).
+- `/api/lookup` and `/api/trace` endpoints now accept both IPv4 and IPv6 addresses.
+- `public/index.html` IP input fields now accept IPv6 as well as IPv4; non-existent polylinedecorator CSS link removed.
 
 ### Fixed
 - SSRF vulnerability in `/api/zdx/userpath` endpoint by validating ZDX cloud parameter against allowlist (PR #4).
 - Python script bugs in `zdx_geo_path.py` including proper error handling and geolocation lookups (PR #4).
 - CIDR format validation in `parseCidr` now properly rejects invalid prefix lengths (PR #5).
 - `fetchZscalerData` now validates cloud parameter against allowlist for defense-in-depth (PR #5).
+- Incomplete RFC 1918 private-IP check in `zdx_oneapi_geopath.py` – now correctly covers `172.16.0.0/12` (second octet 16–31) rather than stopping at `172.25.`.
+- Bare `except:` in `zdx_oneapi_geopath.py` replaced with `except Exception:` to avoid masking `SystemExit` and `KeyboardInterrupt`.
 
 ### Removed
 - Deprecated `git add` command from `lint-staged` configuration (PR #5).
+- Incorrect `leaflet-polylinedecorator` CSS `<link>` from `public/index.html` (the package ships no CSS file).
 
 ## [1.3.0-beta] - 2024-01-01
 

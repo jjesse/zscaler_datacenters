@@ -139,6 +139,12 @@ Hop   IP Address         RTT (ms)   Country
 
 - `zscaler-sdk-python` - Official Zscaler SDK
 - `requests` - HTTP library for API calls and geolocation lookups
+- `python-dotenv` - Load environment variables from `.env` files
+
+All dependencies are pinned in `requirements.txt`. Install with:
+```bash
+pip install -r requirements.txt
+```
 
 ## Cloud Configuration
 
@@ -157,3 +163,67 @@ This script is provided as-is for use with Zscaler Digital Experience monitoring
 ---
 
 **Last Updated**: February 25, 2026
+
+---
+
+# ZDX OneAPI Geo Path Tracker
+
+`zdx_oneapi_geopath.py` is an alternative implementation that uses the Zscaler **OneAPI** (ZIdentity OAuth2) instead of the Legacy ZDX API. Use this script if your organization has migrated to the modern OneAPI authentication model.
+
+## Features
+
+- Authenticates via ZIdentity OAuth2 using `ZscalerClient` from `zscaler-sdk-python`
+- Retrieves device list and cloud path data through the OneAPI
+- Displays hop-by-hop network path with IP addresses and country geolocation
+
+## Prerequisites
+
+- Python 3.8 or higher
+- OneAPI credentials (`ZSCALER_CLIENT_ID`, `ZSCALER_CLIENT_SECRET`, `ZSCALER_VANITY_DOMAIN`)
+- Optionally `ZSCALER_CLOUD` for non-default cloud endpoints
+
+## Configuration
+
+Set the following environment variables (or add them to a `.env` file):
+
+```bash
+export ZSCALER_CLIENT_ID="your-client-id"
+export ZSCALER_CLIENT_SECRET="your-client-secret"
+export ZSCALER_VANITY_DOMAIN="yourcompany"   # e.g., yourcompany.zslogin.net vanity domain
+export ZSCALER_CLOUD="zdxcloud"              # optional; defaults to vanity domain routing
+```
+
+## Usage
+
+```bash
+python zdx_oneapi_geopath.py --user <user_email> --app <app_name>
+```
+
+### Example
+
+```bash
+python zdx_oneapi_geopath.py --user user@example.com --app "Office 365"
+```
+
+## Sample Output
+
+```
+[OneAPI] Fetching devices for: user@example.com
+Tracing: LAPTOP-001 -> Office 365
+
+Hop   IP Address         RTT (ms)   Country
+-------------------------------------------------------
+1     192.168.1.1        5          Local Network
+2     203.0.113.45       18         United States
+3     2a04:4e40::1       35         Netherlands
+```
+
+## Differences from `zdx_geo_path.py`
+
+| Feature | `zdx_geo_path.py` (Legacy) | `zdx_oneapi_geopath.py` (OneAPI) |
+|---------|---------------------------|----------------------------------|
+| Authentication | Legacy ZDX API Key | ZIdentity OAuth2 |
+| Credentials | `ZDX_CLIENT_ID`, `ZDX_CLIENT_SECRET` | `ZSCALER_CLIENT_ID`, `ZSCALER_CLIENT_SECRET`, `ZSCALER_VANITY_DOMAIN` |
+| Cloud config | Hardcoded in script | `ZSCALER_CLOUD` env var |
+| SDK method | `LegacyZDXClientHelper` | `ZscalerClient` |
+

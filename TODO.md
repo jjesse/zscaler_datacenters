@@ -86,11 +86,11 @@ These items were flagged during automated code review but have not yet been addr
 - [x] Fix typos in `ZDX_Geo_Tracker.md` (e.g. "Environment", "scrip", "perofrm", "login" → "logic")
 
 ## Documentation Gaps (New)
-- [ ] **[High]** Fix `openapi.yaml` `LookupFound` schema – the spec shows flat `datacenter`/`city`/`continent` top-level fields but the actual API response wraps them in a nested `datacenter` object since the refactor; update the schema to match
-- [ ] **[Medium]** Document `TRUST_PROXY` environment variable in `README.md` Configuration section (it is in `.env.example` but missing from the README table)
-- [ ] **[Medium]** Add a `requirements.txt` (or `pyproject.toml`) for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) to make dependency installation reproducible
-- [ ] **[Medium]** Document `zdx_oneapi_geopath.py` in `README_PYTHON.md` or a dedicated section (the OneAPI variant is undocumented)
-- [ ] **[Low]** Fix `CONTRIBUTING.md` project structure – `utils/distance.js` is absent from the tree listing
+- [x] **[High]** Fix `openapi.yaml` `LookupFound` schema – the spec shows flat `datacenter`/`city`/`continent` top-level fields but the actual API response wraps them in a nested `datacenter` object since the refactor; update the schema to match
+- [x] **[Medium]** Document `TRUST_PROXY` environment variable in `README.md` Configuration section (it is in `.env.example` but missing from the README table)
+- [x] **[Medium]** Add a `requirements.txt` (or `pyproject.toml`) for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) to make dependency installation reproducible
+- [x] **[Medium]** Document `zdx_oneapi_geopath.py` in `README_PYTHON.md` or a dedicated section (the OneAPI variant is undocumented)
+- [x] **[Low]** Fix `CONTRIBUTING.md` project structure – `utils/distance.js` is absent from the tree listing
 
 ## Infrastructure / Reliability (New)
 - [x] **[High]** Align the Node.js version between `Dockerfile` (`node:18-alpine`) and CI workflow (`node-version: '20'`); upgrade `Dockerfile` base image to `node:20-alpine` (or 22 LTS) to keep them in sync and avoid running EOL Node 18 in production
@@ -101,16 +101,16 @@ These items were flagged during automated code review but have not yet been addr
 - [ ] **[Low]** Add a `.nvmrc` (or `.node-version`) file pinning the Node.js version for local development consistency
 
 ## Code Quality (New)
-- [ ] **[High]** Fix incomplete private-IP prefix list in `zdx_oneapi_geopath.py` `get_country()` – the list ends at `172.25.` but RFC 1918 `172.16.0.0/12` covers up to `172.31.`; add `172.26.` through `172.31.` (or use the same octet-range check already in `server.js`)
+- [x] **[High]** Fix incomplete private-IP prefix list in `zdx_oneapi_geopath.py` `get_country()` – the list ends at `172.25.` but RFC 1918 `172.16.0.0/12` covers up to `172.31.`; add `172.26.` through `172.31.` (or use the same octet-range check already in `server.js`)
 - [ ] **[Medium]** Add input length guards on query-string parameters in `/api/lookup` and `/api/trace` (currently `cloud` and `ip` have no maximum-length check; an arbitrarily long string passes validation and reaches downstream functions)
-- [ ] **[Medium]** Fix bare `except:` in `zdx_oneapi_geopath.py` `get_country()` – replace with `except Exception:` to avoid accidentally suppressing `SystemExit` and `KeyboardInterrupt`
+- [x] **[Medium]** Fix bare `except:` in `zdx_oneapi_geopath.py` `get_country()` – replace with `except Exception:` to avoid accidentally suppressing `SystemExit` and `KeyboardInterrupt`
 - [ ] **[Medium]** Add ESLint coverage for `public/app.js` (currently excluded via `--ignore-pattern public/`) – or add a separate browser-targeted ESLint config so frontend JS quality is enforced in CI
-- [ ] **[Low]** Promote `MAX_TRACE_IPS` (currently inline in the `/api/trace` route handler) to a top-level named constant alongside `PORT` and `CACHE_DURATION`
+- [x] **[Low]** Promote `MAX_TRACE_IPS` (currently inline in the `/api/trace` route handler) to a top-level named constant alongside `PORT` and `CACHE_DURATION`
 - [ ] **[Low]** Fill in the `author` field in `package.json`
 
 ## Security (New)
-- [ ] **[High]** Add Subresource Integrity (SRI) `integrity` attributes to CDN-loaded `<script>` and `<link>` tags in `public/index.html` (Leaflet, Leaflet-PolylineDecorator, html2canvas) to prevent supply-chain injection if unpkg.com or cdnjs.cloudflare.com is compromised
-- [ ] **[High]** Apply stricter rate limits to the `/api/zdx/userpath` endpoint – it makes up to 5 sequential external API calls per request, so the same 100 req/15 min budget that protects `/api/lookup` is disproportionately cheap for this endpoint
+- [x] **[High]** Add Subresource Integrity (SRI) `integrity` attributes to CDN-loaded `<script>` and `<link>` tags in `public/index.html` (Leaflet, Leaflet-PolylineDecorator, html2canvas) to prevent supply-chain injection if unpkg.com or cdnjs.cloudflare.com is compromised
+- [x] **[High]** Apply stricter rate limits to the `/api/zdx/userpath` endpoint – it makes up to 5 sequential external API calls per request, so the same 100 req/15 min budget that protects `/api/lookup` is disproportionately cheap for this endpoint
 - [ ] **[Medium]** Add a `Permissions-Policy` response header (via Helmet or manually) to restrict access to browser APIs such as geolocation, camera, and microphone that the app does not use
 
 ## Testing (New)
@@ -120,7 +120,7 @@ These items were flagged during automated code review but have not yet been addr
 - [ ] **[Low]** Add a CI step to upload test coverage reports to a coverage service (e.g., Codecov or Coveralls) so coverage trends are visible on PRs
 
 ## Features (New)
-- [ ] **[High]** Add IPv6 support – the app currently rejects all non-IPv4 addresses; Zscaler publishes IPv6 ranges in CENR data and users may query from IPv6 sources
+- [x] **[High]** Add IPv6 support – the app currently rejects all non-IPv4 addresses; Zscaler publishes IPv6 ranges in CENR data and users may query from IPv6 sources
 - [ ] **[Medium]** Add a `version` field to the `/api/health` response (read from `package.json`) so operators can confirm which build is running without inspecting the container image
 - [ ] **[Medium]** Add a per-cloud cache-refresh endpoint (e.g., `POST /api/cache/flush`) protected by a configurable admin token, so operators can force a data refresh without restarting the container
 - [ ] **[Medium]** Add shareable/bookmarkable URLs – push lookup parameters into the browser's query string (`history.pushState`) so results pages can be bookmarked or shared as links

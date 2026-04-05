@@ -51,17 +51,15 @@ paths:
           required: true
           schema:
             type: string
-            format: ipv4
             example: 165.225.28.50
-          description: Zscaler datacenter IPv4 address to look up
+          description: Zscaler datacenter IPv4 or IPv6 address to look up
         - name: sourceIp
           in: query
           required: false
           schema:
             type: string
-            format: ipv4
             example: 203.0.113.45
-          description: Your public IPv4 address (used for distance calculation)
+          description: Your public IPv4 or IPv6 address (used for distance calculation)
       responses:
         '200':
           description: Lookup result (success or not-found)
@@ -99,7 +97,6 @@ paths:
                   type: array
                   items:
                     type: string
-                    format: ipv4
                   minItems: 1
                   maxItems: 50
                   example:
@@ -236,22 +233,35 @@ components:
           example: true
         ip:
           type: string
-          format: ipv4
         cloud:
           type: string
         datacenter:
-          type: string
-        city:
-          type: string
-        continent:
-          type: string
-        range:
-          type: string
-          example: 165.225.28.0/24
-        latitude:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+            city:
+              type: string
+            country:
+              type: string
+            latitude:
+              type: number
+              nullable: true
+            longitude:
+              type: number
+              nullable: true
+            ipRanges:
+              type: array
+              items:
+                type: string
+              example:
+                - 165.225.28.0/24
+        matchedRange:
           type: string
           nullable: true
-        longitude:
+          example: 165.225.28.0/24
+        continent:
           type: string
           nullable: true
         clientIp:
@@ -281,15 +291,17 @@ components:
       properties:
         success:
           type: boolean
-          example: false
+          example: true
         ip:
           type: string
-          format: ipv4
         cloud:
           type: string
-        error:
-          type: string
-          example: IP address not found in any datacenter for this cloud
+        datacenter:
+          nullable: true
+          example: null
+        matchedRange:
+          nullable: true
+          example: null
 
     TraceResult:
       type: object

@@ -7,12 +7,18 @@ const request = require('supertest');
 const axios = require('axios');
 const app = require('../../server');
 
-// Mock CENR data – 165.225.0.0/16 covers 165.225.0.1; 8.8.8.8 and 1.1.1.1 are not included
+// Mock CENR data – 165.225.0.0/16 covers 165.225.0.1; 2a04:4e40::/32 covers 2a04:4e40::1;
+// 8.8.8.8 and 1.1.1.1 are not included
 const MOCK_CENR_DATA = {
   'zscaler.net': {
     'continent : Americas': {
       'city : Dallas': [
         { range: '165.225.0.0/16', latitude: '32.783', longitude: '-96.806' }
+      ]
+    },
+    'continent : EMEA': {
+      'city : Amsterdam': [
+        { range: '2a04:4e40::/32', latitude: '52.374', longitude: '4.900' }
       ]
     }
   }
@@ -109,6 +115,26 @@ describe('GET /api/lookup', () => {
     expect(res.body.datacenter).toBeNull();
     expect(res.body.matchedRange).toBeNull();
   }, 15000);
+
+  it('returns 200 with datacenter info for a valid IPv6 lookup', async () => {
+    const res = await request(app).get('/api/lookup?cloud=zscaler.net&ip=2a04:4e40::1');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    if (res.body.datacenter) {
+      expect(typeof res.body.datacenter.name).toBe('string');
+      expect(typeof res.body.datacenter.city).toBe('string');
+      expect(typeof res.body.datacenter.country).toBe('string');
+      expect(Array.isArray(res.body.datacenter.ipRanges)).toBe(true);
+      expect(typeof res.body.matchedRange).toBe('string');
+    }
+  }, 15000);
+
+  it('returns 400 for an invalid IPv6 address', async () => {
+    const res = await request(app).get('/api/lookup?cloud=zscaler.net&ip=:::1');
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Invalid IP address format/);
+  });
 });
 
 describe('POST /api/trace', () => {

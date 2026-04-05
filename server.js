@@ -10,7 +10,7 @@ const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
-const { isValidIp, parseCidr, isIpInRange } = require('./utils/ip');
+const { parseCidr, isIpInRange, isValidAddress, isValidIpv6, parseIpv6Cidr, isIpv6InRange } = require('./utils/ip');
 const { calculateDistance } = require('./utils/distance');
 
 const app = express();
@@ -39,6 +39,7 @@ if (process.env.TRUST_PROXY) {
 
 const PORT = process.env.PORT || 3000;
 const CACHE_DURATION = process.env.CACHE_DURATION || 3600000; // 1 hour default
+const MAX_TRACE_IPS = 50;
 
 // CORS configuration - restrict to known origins if ALLOWED_ORIGINS env var is set
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -62,6 +63,17 @@ const corsOptions = allowedOrigins
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' }
+});
+
+// Stricter rate limiter for the ZDX userpath endpoint – each request makes up
+// to 5 sequential external API calls, so we apply a tighter budget to prevent
+// the standard 100 req/15 min allowance from being disproportionately cheap.
+const zdxLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, please try again later.' }
@@ -179,7 +191,7 @@ async function fetchZscalerData(cloud) {
 
 /**
  * Lookup an IP address in Zscaler CENR data
- * @param {string} ip - IPv4 address to look up
+ * @param {string} ip - IPv4 or IPv6 address to look up
  * @param {object} zscalerData - Parsed CENR data from fetchZscalerData()
  * @returns {object|null} Match result or null if not found
  */
@@ -188,6 +200,7 @@ function lookupIp(ip, zscalerData) {
   if (cloudKeys.length === 0) return null;
 
   const cloudData = zscalerData[cloudKeys[0]];
+  const isV6 = isValidIpv6(ip);
 
   for (const [continentKey, cities] of Object.entries(cloudData)) {
     if (typeof cities !== 'object' || Array.isArray(cities)) continue;
@@ -210,10 +223,20 @@ function lookupIp(ip, zscalerData) {
             continue;
           }
 
-          if (cidr.includes(':')) continue;
+          const cidrIsV6 = cidr.includes(':');
+          // Only compare same address family
+          if (isV6 !== cidrIsV6) continue;
 
-          const range = parseCidr(cidr);
-          if (isIpInRange(ip, range)) {
+          let inRange;
+          if (isV6) {
+            const range = parseIpv6Cidr(cidr);
+            inRange = isIpv6InRange(ip, range);
+          } else {
+            const range = parseCidr(cidr);
+            inRange = isIpInRange(ip, range);
+          }
+
+          if (inRange) {
             return {
               datacenter,
               city: datacenter,
@@ -249,27 +272,35 @@ function getClientIp(req) {
 
 /**
  * Get geolocation for a public IP address using ip-api.com
- * @param {string} ip - IPv4 address to geolocate
+ * @param {string} ip - IPv4 or IPv6 address to geolocate
  * @returns {Promise<object|null>} Geolocation data or null
  */
 async function getIpGeolocation(ip) {
-  // Validate the input is a well-formed IPv4 address before using it in a URL.
-  // This is defence-in-depth: callers already validate, but this prevents any
-  // unexpected value (e.g. from a third-party API) from reaching the URL.
-  if (!isValidIp(ip)) {
+  // Validate the input is a well-formed IP address before using it in a URL.
+  if (!isValidAddress(ip)) {
     return null;
   }
 
-  // Check for private IP ranges (RFC 1918)
-  if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
-    return null;
-  }
-  // RFC 1918: 172.16.0.0/12 (second octet 16-31 only)
-  if (ip.startsWith('172.')) {
-    const parts = ip.split('.');
-    const secondOctet = parseInt(parts[1], 10);
-    if (secondOctet >= 16 && secondOctet <= 31) {
+  if (isValidIpv6(ip)) {
+    // IPv6 private ranges: loopback (::1), link-local (fe80::/10),
+    // unique-local (fc00::/7), and the unspecified address (::)
+    const lower = ip.toLowerCase().split('%')[0];
+    if (lower === '::1' || lower === '::') return null;
+    if (lower.startsWith('fe80:') || lower.startsWith('fe9') ||
+        lower.startsWith('fea') || lower.startsWith('feb')) return null;
+    if (lower.startsWith('fc') || lower.startsWith('fd')) return null;
+  } else {
+    // Check for private IP ranges (RFC 1918) – IPv4
+    if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
       return null;
+    }
+    // RFC 1918: 172.16.0.0/12 (second octet 16-31 only)
+    if (ip.startsWith('172.')) {
+      const parts = ip.split('.');
+      const secondOctet = parseInt(parts[1], 10);
+      if (secondOctet >= 16 && secondOctet <= 31) {
+        return null;
+      }
     }
   }
 
@@ -331,14 +362,14 @@ app.get('/api/lookup', async (req, res) => {
     });
   }
 
-  if (!isValidIp(ip)) {
+  if (!isValidAddress(ip)) {
     return res.status(400).json({
       success: false,
       error: 'Invalid IP address format'
     });
   }
 
-  if (sourceIp && !isValidIp(sourceIp)) {
+  if (sourceIp && !isValidAddress(sourceIp)) {
     return res.status(400).json({
       success: false,
       error: 'Invalid source IP address format'
@@ -422,7 +453,6 @@ app.post('/api/trace', async (req, res) => {
     });
   }
 
-  const MAX_TRACE_IPS = 50;
   if (ips.length === 0) {
     return res.status(400).json({
       success: false,
@@ -443,7 +473,7 @@ app.post('/api/trace', async (req, res) => {
     });
   }
 
-  const invalidIps = ips.filter(ip => !isValidIp(ip));
+  const invalidIps = ips.filter(ip => !isValidAddress(ip));
   if (invalidIps.length > 0) {
     return res.status(400).json({
       success: false,
@@ -528,7 +558,7 @@ app.post('/api/trace', async (req, res) => {
  * POST /api/zdx/userpath - Get ZDX user path to application
  * Body: { cloud, userEmail, appName }
  */
-app.post('/api/zdx/userpath', async (req, res) => {
+app.post('/api/zdx/userpath', zdxLimiter, async (req, res) => {
   const { cloud, userEmail, appName } = req.body;
 
   // Validate required parameters

@@ -45,7 +45,8 @@ Thank you for your interest in contributing to Zscaler Datacenter Lookup!
 .
 ├── server.js            # Express backend
 ├── utils/
-│   └── ip.js            # IP utility functions
+│   ├── ip.js            # IP utility functions (IPv4 and IPv6)
+│   └── distance.js      # Haversine distance calculation
 ├── public/
 │   ├── index.html
 │   ├── app.js
