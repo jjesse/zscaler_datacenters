@@ -540,6 +540,7 @@ app.post('/api/zdx/userpath', async (req, res) => {
   }
 
   // Validate appName length and allowed characters (printable ASCII, no control characters)
+  // eslint-disable-next-line no-control-regex
   if (typeof appName !== 'string' || appName.length > 200 || /[\x00-\x1F\x7F]/.test(appName)) {
     return res.status(400).json({
       success: false,
