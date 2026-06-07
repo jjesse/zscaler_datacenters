@@ -109,9 +109,9 @@ These items were flagged during automated code review but have not yet been addr
 - [ ] **[Low]** Fill in the `author` field in `package.json`
 
 ## Security (New)
-- [ ] **[High]** Add Subresource Integrity (SRI) `integrity` attributes to CDN-loaded `<script>` and `<link>` tags in `public/index.html` (Leaflet, Leaflet-PolylineDecorator, html2canvas) to prevent supply-chain injection if unpkg.com or cdnjs.cloudflare.com is compromised
-- [ ] **[High]** Apply stricter rate limits to the `/api/zdx/userpath` endpoint – it makes up to 5 sequential external API calls per request, so the same 100 req/15 min budget that protects `/api/lookup` is disproportionately cheap for this endpoint
-- [ ] **[Medium]** Add a `Permissions-Policy` response header (via Helmet or manually) to restrict access to browser APIs such as geolocation, camera, and microphone that the app does not use
+- [x] **[High]** Add Subresource Integrity (SRI) `integrity` attributes to CDN-loaded `<script>` and `<link>` tags in `public/index.html` (Leaflet, Leaflet-PolylineDecorator, html2canvas) to prevent supply-chain injection if unpkg.com or cdnjs.cloudflare.com is compromised
+- [x] **[High]** Apply stricter rate limits to the `/api/zdx/userpath` endpoint – it makes up to 5 sequential external API calls per request, so the same 100 req/15 min budget that protects `/api/lookup` is disproportionately cheap for this endpoint
+- [x] **[Medium]** Add a `Permissions-Policy` response header (via Helmet or manually) to restrict access to browser APIs such as geolocation, camera, and microphone that the app does not use
 
 ## Testing (New)
 - [ ] **[Medium]** Add unit tests for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) covering the `get_country()` helper and argument parsing (use `pytest` + `unittest.mock`)
