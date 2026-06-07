@@ -67,6 +67,17 @@ const apiLimiter = rateLimit({
   message: { success: false, error: 'Too many requests, please try again later.' }
 });
 
+// Stricter rate limiter for /api/zdx/userpath – each request makes up to 5
+// sequential external API calls, so the standard 100 req/15 min budget is
+// disproportionately cheap for this endpoint.
+const zdxLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' }
+});
+
 // Middleware
 app.use(compression());
 app.use(helmet({
@@ -91,6 +102,11 @@ app.use(helmet({
     },
   },
 }));
+// Restrict browser features that this application does not use
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  next();
+});
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static('public', {
@@ -528,7 +544,7 @@ app.post('/api/trace', async (req, res) => {
  * POST /api/zdx/userpath - Get ZDX user path to application
  * Body: { cloud, userEmail, appName }
  */
-app.post('/api/zdx/userpath', async (req, res) => {
+app.post('/api/zdx/userpath', zdxLimiter, async (req, res) => {
   const { cloud, userEmail, appName } = req.body;
 
   // Validate required parameters
