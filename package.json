@@ -1,6 +1,6 @@
 {
   "name": "zscaler-datacenter-lookup",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "Web app to identify Zscaler datacenter locations from IP addresses",
   "main": "server.js",
   "scripts": {
