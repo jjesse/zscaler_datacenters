@@ -195,7 +195,7 @@ async function fetchZscalerData(cloud) {
 
 /**
  * Lookup an IP address in Zscaler CENR data
- * @param {string} ip - IPv4 address to look up
+ * @param {string} ip - IPv4 or IPv6 address to look up
  * @param {object} zscalerData - Parsed CENR data from fetchZscalerData()
  * @returns {object|null} Match result or null if not found
  */
@@ -226,9 +226,10 @@ function lookupIp(ip, zscalerData) {
             continue;
           }
 
-          if (cidr.includes(':')) continue;
-
           const range = parseCidr(cidr);
+          // Skip ranges whose family does not match the query IP
+          const queryIsV6 = ip.includes(':');
+          if ((range.family === 'ipv6') !== queryIsV6) continue;
           if (isIpInRange(ip, range)) {
             return {
               datacenter,
@@ -252,7 +253,7 @@ function lookupIp(ip, zscalerData) {
 /**
  * Get client IP address from request, handling proxy headers
  * @param {import('express').Request} req - Express request object
- * @returns {string} Client IPv4 address
+ * @returns {string} Client IPv4 or IPv6 address
  */
 function getClientIp(req) {
   // Use req.ip which applies Express's built-in trust proxy logic.
@@ -265,19 +266,22 @@ function getClientIp(req) {
 
 /**
  * Get geolocation for a public IP address using ip-api.com
- * @param {string} ip - IPv4 address to geolocate
+ * @param {string} ip - IPv4 or IPv6 address to geolocate
  * @returns {Promise<object|null>} Geolocation data or null
  */
 async function getIpGeolocation(ip) {
-  // Validate the input is a well-formed IPv4 address before using it in a URL.
+  // Validate the input is a well-formed IP address before using it in a URL.
   // This is defence-in-depth: callers already validate, but this prevents any
   // unexpected value (e.g. from a third-party API) from reaching the URL.
   if (!isValidIp(ip)) {
     return null;
   }
 
-  // Check for private IP ranges (RFC 1918)
-  if (ip === '127.0.0.1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+  if (ip === '127.0.0.1' || ip === 'localhost' || ip === '::1') {
+    return null;
+  }
+  // IPv4 RFC 1918 + link-local
+  if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('169.254.')) {
     return null;
   }
   // RFC 1918: 172.16.0.0/12 (second octet 16-31 only)
@@ -287,6 +291,11 @@ async function getIpGeolocation(ip) {
     if (secondOctet >= 16 && secondOctet <= 31) {
       return null;
     }
+  }
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
+  const lower = ip.toLowerCase();
+  if (lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80:')) {
+    return null;
   }
 
   try {

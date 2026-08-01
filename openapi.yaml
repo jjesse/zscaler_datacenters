@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: Zscaler Datacenter Lookup API
-  description: REST API for looking up Zscaler datacenter locations from IP addresses.
-  version: 1.3.0
+  description: REST API for looking up Zscaler datacenter locations from IPv4 and IPv6 addresses.
+  version: 1.4.0
   license:
     name: MIT
 
@@ -51,17 +51,15 @@ paths:
           required: true
           schema:
             type: string
-            format: ipv4
             example: 165.225.28.50
-          description: Zscaler datacenter IPv4 address to look up
+          description: Zscaler datacenter IPv4 or IPv6 address to look up
         - name: sourceIp
           in: query
           required: false
           schema:
             type: string
-            format: ipv4
             example: 203.0.113.45
-          description: Your public IPv4 address (used for distance calculation)
+          description: Your public IPv4 or IPv6 address (used for distance calculation)
       responses:
         '200':
           description: Lookup result (success or not-found)
@@ -186,25 +184,37 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  userEmail:
-                    type: string
-                  appName:
-                    type: string
-                  deviceId:
-                    type: string
-                  path:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        hop:
-                          type: integer
-                        ip:
-                          type: string
-                        latency:
-                          type: number
-                        location:
-                          type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: string
+                      device:
+                        type: string
+                      application:
+                        type: string
+                      probe:
+                        type: string
+                      timestamp:
+                        type: string
+                      hops:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ip:
+                              type: string
+                            latency:
+                              type: number
+                              nullable: true
+                            segment:
+                              type: string
+                            country:
+                              type: string
+                              nullable: true
+                            city:
+                              type: string
+                              nullable: true
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -236,24 +246,16 @@ components:
           example: true
         ip:
           type: string
-          format: ipv4
         cloud:
           type: string
         datacenter:
-          type: string
-        city:
-          type: string
-        continent:
-          type: string
-        range:
+          $ref: '#/components/schemas/DatacenterInfo'
+        matchedRange:
           type: string
           example: 165.225.28.0/24
-        latitude:
+        continent:
           type: string
-          nullable: true
-        longitude:
-          type: string
-          nullable: true
+          example: EMEA
         clientIp:
           type: string
           nullable: true
@@ -276,20 +278,49 @@ components:
           type: number
           nullable: true
 
+    DatacenterInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Amsterdam II
+        city:
+          type: string
+          example: Amsterdam II
+        country:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          nullable: true
+        longitude:
+          type: number
+          nullable: true
+        ipRanges:
+          type: array
+          items:
+            type: string
+          example:
+            - 165.225.28.0/24
+
     LookupNotFound:
       type: object
       properties:
         success:
           type: boolean
-          example: false
+          example: true
         ip:
           type: string
-          format: ipv4
         cloud:
           type: string
-        error:
+        datacenter:
+          type: object
+          nullable: true
+          example: null
+        matchedRange:
           type: string
-          example: IP address not found in any datacenter for this cloud
+          nullable: true
+          example: null
 
     TraceResult:
       type: object
@@ -299,11 +330,13 @@ components:
           example: true
         cloud:
           type: string
-        hops:
+        results:
           type: array
           items:
-            $ref: '#/components/schemas/Hop'
-        totalHops:
+            $ref: '#/components/schemas/TraceHop'
+        totalResults:
+          type: integer
+        foundResults:
           type: integer
         totalDistance:
           type: number
@@ -311,37 +344,31 @@ components:
         totalDistanceMiles:
           type: number
           nullable: true
-        foundHops:
-          type: integer
 
-    Hop:
+    TraceHop:
       type: object
       properties:
+        hop:
+          type: integer
         ip:
           type: string
-          format: ipv4
-        found:
-          type: boolean
         datacenter:
+          $ref: '#/components/schemas/DatacenterInfo'
+          nullable: true
+        matchedRange:
           type: string
           nullable: true
         city:
           type: string
           nullable: true
-        continent:
-          type: string
-          nullable: true
         country:
           type: string
           nullable: true
-        range:
-          type: string
-          nullable: true
         latitude:
-          type: string
+          type: number
           nullable: true
         longitude:
-          type: string
+          type: number
           nullable: true
         distanceFromPrevious:
           type: number

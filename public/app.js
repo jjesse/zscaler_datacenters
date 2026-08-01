@@ -108,22 +108,30 @@ copyZdxBtn.addEventListener('click', copyZdxToClipboard);
 exportZdxJsonBtn.addEventListener('click', exportZdxAsJson);
 exportZdxCsvBtn.addEventListener('click', exportZdxAsCsv);
 
-// IP address validation regex
+// IP address validation regex (IPv4)
 const ipRegex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
 /**
- * Validate IP address
+ * Validate IP address (IPv4 or IPv6)
  */
 function validateIp(ip) {
+    // Try IPv4 first
     const match = ip.match(ipRegex);
-    if (!match) return false;
-    
-    // Check each octet is 0-255
-    for (let i = 1; i <= 4; i++) {
-        const octet = parseInt(match[i]);
-        if (octet < 0 || octet > 255) return false;
+    if (match) {
+        for (let i = 1; i <= 4; i++) {
+            const octet = parseInt(match[i]);
+            if (octet < 0 || octet > 255) return false;
+        }
+        return true;
     }
-    
+
+    // Try IPv6: allow hex digits, colons, and a single optional dot-decimal segment
+    // Reject if more than one "::" appears
+    if ((ip.match(/::/g) || []).length > 1) return false;
+    // Must contain at least one colon to be IPv6
+    if (!ip.includes(':')) return false;
+    // Only allow hex digits, colons, and dots (for IPv4-mapped addresses)
+    if (/[^0-9a-fA-F:.]/.test(ip)) return false;
     return true;
 }
 
@@ -144,13 +152,13 @@ async function handleSubmit(e) {
     }
     
     if (!validateIp(ip)) {
-        showError('Please enter a valid Zscaler IPv4 address');
+        showError('Please enter a valid Zscaler IPv4 or IPv6 address');
         return;
     }
     
     // Validate source IP if provided
     if (sourceIp && !validateIp(sourceIp)) {
-        showError('Please enter a valid source IPv4 address');
+        showError('Please enter a valid source IPv4 or IPv6 address');
         return;
     }
     
@@ -200,23 +208,31 @@ function setLoading(isLoading) {
  * Show success result
  */
 function showSuccess(data) {
+    const dc = data.datacenter || {};
+    const dcName = dc.name || '';
+    const dcCity = dc.city || '';
+    const dcContinent = data.continent || dc.country || '';
+    const dcRange = data.matchedRange || (dc.ipRanges && dc.ipRanges[0]) || '';
+    const dcLat = dc.latitude != null ? dc.latitude : null;
+    const dcLng = dc.longitude != null ? dc.longitude : null;
+
     const html = `
         <div class="result-info">
             <div class="info-row">
                 <span class="info-label">Datacenter:</span>
-                <span class="info-value highlight">${escapeHtml(data.datacenter)}</span>
+                <span class="info-value highlight">${escapeHtml(dcName)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">City:</span>
-                <span class="info-value">${escapeHtml(data.city)}</span>
+                <span class="info-value">${escapeHtml(dcCity)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Continent:</span>
-                <span class="info-value">${escapeHtml(data.continent)}</span>
+                <span class="info-value">${escapeHtml(dcContinent)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">IP Range:</span>
-                <span class="info-value">${escapeHtml(data.range)}</span>
+                <span class="info-value">${escapeHtml(dcRange)}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Cloud:</span>
@@ -226,10 +242,10 @@ function showSuccess(data) {
                 <span class="info-label">Queried IP:</span>
                 <span class="info-value">${escapeHtml(data.ip)}</span>
             </div>
-            ${data.latitude && data.longitude ? `
+            ${dcLat != null && dcLng != null ? `
             <div class="info-row">
                 <span class="info-label">Coordinates:</span>
-                <span class="info-value">${escapeHtml(data.latitude)}, ${escapeHtml(data.longitude)}</span>
+                <span class="info-value">${escapeHtml(String(dcLat))}, ${escapeHtml(String(dcLng))}</span>
             </div>
             ` : ''}
             ${data.clientIp ? `
@@ -247,7 +263,7 @@ function showSuccess(data) {
             ${data.distanceKm ? `
             <div class="info-row distance-info">
                 <span class="info-label">Distance:</span>
-                <span class="info-value highlight-distance">${escapeHtml(data.distanceKm)} km (${escapeHtml(data.distanceMiles)} miles)</span>
+                <span class="info-value highlight-distance">${escapeHtml(String(data.distanceKm))} km (${escapeHtml(String(data.distanceMiles))} miles)</span>
             </div>
             ` : ''}
             ` : ''}
@@ -259,14 +275,14 @@ function showSuccess(data) {
     resultContainer.querySelector('.result-card').classList.remove('error');
     
     // Show map if coordinates are available
-    if (data.latitude && data.longitude) {
-        const datacenterLat = parseFloat(data.latitude);
-        const datacenterLng = parseFloat(data.longitude);
+    if (dcLat != null && dcLng != null) {
+        const datacenterLat = parseFloat(dcLat);
+        const datacenterLng = parseFloat(dcLng);
         const clientLat = data.clientLatitude ? parseFloat(data.clientLatitude) : null;
         const clientLng = data.clientLongitude ? parseFloat(data.clientLongitude) : null;
         const distance = data.distanceKm ? `${data.distanceKm} km` : null;
         
-        showMap(datacenterLat, datacenterLng, data.datacenter, clientLat, clientLng, data.clientCity || 'Your Location', distance);
+        showMap(datacenterLat, datacenterLng, dcName, clientLat, clientLng, data.clientCity || 'Your Location', distance);
     } else {
         mapContainer.style.display = 'none';
     }
@@ -430,8 +446,8 @@ function escapeHtml(text) {
 
 // Auto-format IP input (optional enhancement)
 ipInput.addEventListener('input', function(e) {
-    // Remove non-numeric and non-dot characters
-    let value = e.target.value.replace(/[^\d.]/g, '');
+    // Remove characters that are not valid in IPv4 or IPv6 addresses
+    let value = e.target.value.replace(/[^0-9a-fA-F.:]/g, '');
     
     // Prevent multiple consecutive dots
     value = value.replace(/\.{2,}/g, '.');
@@ -535,6 +551,23 @@ async function handleTraceSubmit(e) {
         
         const data = await response.json();
         
+        // Normalise results: server returns data.results; map to hops shape for display
+        if (data.success && data.results) {
+            data.hops = data.results.map(r => ({
+                ip: r.ip,
+                hop: r.hop,
+                found: r.datacenter !== null,
+                datacenter: r.datacenter ? r.datacenter.name : null,
+                city: r.datacenter ? r.datacenter.city : (r.city || null),
+                country: r.datacenter ? r.datacenter.country : (r.country || null),
+                latitude: r.datacenter ? r.datacenter.latitude : (r.latitude || null),
+                longitude: r.datacenter ? r.datacenter.longitude : (r.longitude || null),
+                distanceFromPrevious: r.distanceFromPrevious || null
+            }));
+            data.totalHops = data.totalResults;
+            data.foundHops = data.foundResults;
+        }
+
         // Display results
         if (data.success && data.hops) {
             showTraceSuccess(data);

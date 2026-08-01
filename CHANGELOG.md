@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- IPv6 support end-to-end: `lookupIp()` now matches IPv6 CIDRs for IPv6 queries; `getIpGeolocation()` correctly skips IPv6 private/link-local addresses (`::1`, `fc00::/7`, `fe80::/10`); frontend `validateIp` accepts both families.
+- OpenAPI 1.4.0: nested `DatacenterInfo` schema (`name`, `city`, `country`, `latitude`, `longitude`, `ipRanges`); `LookupFound` uses `datacenter` object; `TraceResult` uses `results[]` with `totalResults`/`foundResults`; `/api/zdx/userpath` response updated to match actual implementation.
+- `requirements.txt` listing `zscaler-sdk-python` and `requests` for reproducible Python dependency installation.
+- `zdx_oneapi_geopath.py` OneAPI usage documented in `README_PYTHON.md`.
 - Rate limiting middleware (`express-rate-limit`) – 100 req / 15 min per IP on all `/api` routes.
 - Security headers via `helmet.js` including Content Security Policy (CSP).
 - Response compression via `compression` middleware.
@@ -43,7 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RFC 1918 private IP check now correctly identifies `172.16.0.0/12` range only (PR #5).
 
 ### Fixed
-- SSRF vulnerability in `/api/zdx/userpath` endpoint by validating ZDX cloud parameter against allowlist (PR #4).
+- Private-IP detection in `getIpGeolocation()` now covers IPv6 loopback (`::1`), IPv4 link-local (`169.254.x.x`), and IPv6 unique-local/link-local ranges in addition to existing RFC 1918 IPv4 ranges.
+- Frontend `showSuccess()` now reads from the nested `data.datacenter` object returned by the API (was reading flat top-level fields).
+- RFC 1918 private IP check now correctly identifies `172.16.0.0/12` range only (PR #5).
 - Python script bugs in `zdx_geo_path.py` including proper error handling and geolocation lookups (PR #4).
 - CIDR format validation in `parseCidr` now properly rejects invalid prefix lengths (PR #5).
 - `fetchZscalerData` now validates cloud parameter against allowlist for defense-in-depth (PR #5).
