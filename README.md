@@ -18,7 +18,7 @@ When connected to Zscaler, you may see an IP address but not know which datacent
   - zscalerbeta.net
   - zscalergov.net
   - zscalerten.net
-- 🔍 **IP Lookup** - Quickly identify which datacenter an IP belongs to
+- 🔍 **IP Lookup** - Quickly identify which datacenter an IP belongs to (IPv4 and IPv6 supported)
 - �️ **Interactive Map** - Visualize datacenter locations on an interactive map using Leaflet
 - 🚀 **Traffic Flow Visualization** - See the traffic path from your location to the Zscaler datacenter
   - Dual markers showing your location (📍) and datacenter (🏢)
@@ -221,12 +221,16 @@ curl "http://localhost:3000/api/lookup?cloud=zscalerthree.net&ip=165.225.28.50&s
   "success": true,
   "ip": "165.225.28.50",
   "cloud": "zscalerthree.net",
-  "datacenter": "Amsterdam II",
-  "city": "Amsterdam II",
+  "datacenter": {
+    "name": "Amsterdam II",
+    "city": "Amsterdam II",
+    "country": "EMEA",
+    "latitude": 52.367573,
+    "longitude": 4.904139,
+    "ipRanges": ["165.225.28.0/23"]
+  },
+  "matchedRange": "165.225.28.0/23",
   "continent": "EMEA",
-  "range": "165.225.28.0/23",
-  "latitude": "52.367573",
-  "longitude": "4.904139",
   "clientIp": "8.8.8.8",
   "clientCity": "Ashburn",
   "clientCountry": "United States",
@@ -341,6 +345,7 @@ zscaler/
 - `PORT` - Server port (default: 3000)
 - `CACHE_DURATION` - How long to cache Zscaler data in milliseconds (default: 3600000 - 1 hour)
 - `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: allow all). Example: `https://example.com,https://app.example.com`
+- `TRUST_PROXY` - Set to a hop count (e.g. `1`) or a named preset (`loopback`, `linklocal`, `uniquelocal`) when deploying behind a reverse proxy (nginx, Traefik, etc.) so that `X-Forwarded-For` headers are trusted correctly for rate limiting and IP detection. Leave unset for direct/public deployments to prevent IP-spoofing.
 - `SSL_KEY_PATH` - Path to SSL private key file for HTTPS (optional)
 - `SSL_CERT_PATH` - Path to SSL certificate file for HTTPS (optional)
 - `ZDX_CLIENT_ID` - ZDX API client ID (required for `/api/zdx/userpath` endpoint)
@@ -360,7 +365,7 @@ Modify `docker-compose.yml` to customize:
 - Check Docker is running: `docker ps`
 
 ### IP lookup returns no results
-- Verify the IP address format is correct (IPv4)
+- Verify the IP address format is correct (IPv4 or IPv6)
 - Ensure you've selected the correct Zscaler cloud
 - The IP might not belong to any Zscaler datacenter
 
