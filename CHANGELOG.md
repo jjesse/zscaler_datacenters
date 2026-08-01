@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-08-01
+
+### Added
+- `/api/health` response now includes a `version` field (read from `package.json`) so operators can confirm which build is running.
+- Cache stampede protection in `fetchZscalerData`: concurrent requests for the same un-cached cloud now share a single in-flight promise via `pendingFetches` map (promise coalescing).
+- Input length guards on `/api/lookup` query parameters (`cloud`, `ip`, `sourceIp`) and `/api/trace` `cloud` field – requests exceeding 256 characters receive a `400` response.
+- `.nvmrc` pinning Node.js version for local development consistency.
+- `User-Agent` header on CENR requests now includes the app version (e.g. `Zscaler-Datacenter-Lookup/1.4.1`).
+- `author` and `engines` fields set in `package.json`.
+- `MAX_TRACE_IPS` promoted to a top-level named constant (was inline in the `/api/trace` handler).
+- `ALLOWED_ORIGINS` documented in `.env.example`.
+- `utils/distance.js` added to the project tree in `CONTRIBUTING.md`.
+
 ## [1.4.0] - 2026-08-01
 
 ### Added

@@ -36,6 +36,8 @@ describe('GET /api/health', () => {
     expect(res.body.status).toBe('healthy');
     expect(typeof res.body.timestamp).toBe('string');
     expect(typeof res.body.cacheSize).toBe('number');
+    expect(typeof res.body.version).toBe('string');
+    expect(res.body.version).toBe(require('../../package.json').version);
   });
 });
 
@@ -100,6 +102,14 @@ describe('GET /api/lookup', () => {
       expect(typeof res.body.matchedRange).toBe('string');
     }
   }, 15000); // Increase timeout for API call
+
+  it('returns 400 when parameter exceeds max length', async () => {
+    const longIp = 'a'.repeat(257);
+    const res = await request(app).get(`/api/lookup?cloud=zscaler.net&ip=${longIp}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/Parameter too long/);
+  });
 
   it('returns 200 but no match for an IP not in Zscaler ranges', async () => {
     // Use a public IP that's unlikely to be in Zscaler ranges (e.g., Google DNS)
