@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Zscaler Datacenter Lookup API
   description: REST API for looking up Zscaler datacenter locations from IPv4 and IPv6 addresses.
-  version: 1.4.0
+  version: 1.4.1
   license:
     name: MIT
 
@@ -141,6 +141,9 @@ paths:
                   cacheSize:
                     type: integer
                     example: 2
+                  version:
+                    type: string
+                    example: 1.4.1
 
   /api/zdx/userpath:
     post:

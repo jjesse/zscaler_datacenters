@@ -12,6 +12,7 @@ const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const { isValidIp, parseCidr, isIpInRange } = require('./utils/ip');
 const { calculateDistance } = require('./utils/distance');
+const { version: APP_VERSION } = require('./package.json');
 
 const app = express();
 
@@ -39,6 +40,8 @@ if (process.env.TRUST_PROXY) {
 
 const PORT = process.env.PORT || 3000;
 const CACHE_DURATION = process.env.CACHE_DURATION || 3600000; // 1 hour default
+const MAX_TRACE_IPS = 50;
+const MAX_PARAM_LENGTH = 256; // max length for cloud / single IP query params
 
 // CORS configuration - restrict to known origins if ALLOWED_ORIGINS env var is set
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -143,6 +146,7 @@ const ZDX_CLOUDS = [
 
 // Cache for Zscaler data
 const dataCache = new Map();
+const pendingFetches = new Map();
 
 /**
  * Fetch Zscaler CENR data for a specific cloud
@@ -155,7 +159,7 @@ async function fetchZscalerData(cloud) {
   if (!ZSCALER_CLOUDS.includes(cloud)) {
     throw new Error(`Invalid cloud: ${cloud} is not in the allowed list`);
   }
-  
+
   const cacheKey = cloud;
   const cached = dataCache.get(cacheKey);
 
@@ -164,33 +168,44 @@ async function fetchZscalerData(cloud) {
     return cached.data;
   }
 
-  try {
-    const url = `https://config.zscaler.com/api/${cloud}/cenr/json`;
-    console.log(`Fetching data from ${url}`);
-
-    const response = await axios.get(url, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Zscaler-Datacenter-Lookup/1.0'
-      }
-    });
-
-    dataCache.set(cacheKey, {
-      data: response.data,
-      timestamp: Date.now()
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching data for ${cloud}:`, error.message);
-
-    if (cached) {
-      console.log(`Using expired cache for ${cloud}`);
-      return cached.data;
-    }
-
-    throw error;
+  if (pendingFetches.has(cloud)) {
+    return pendingFetches.get(cloud);
   }
+
+  const fetchPromise = (async () => {
+    try {
+      const url = `https://config.zscaler.com/api/${cloud}/cenr/json`;
+      console.log(`Fetching data from ${url}`);
+
+      const response = await axios.get(url, {
+        timeout: 10000,
+        headers: {
+          'User-Agent': `Zscaler-Datacenter-Lookup/${APP_VERSION}`
+        }
+      });
+
+      dataCache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching data for ${cloud}:`, error.message);
+
+      if (cached) {
+        console.log(`Using expired cache for ${cloud}`);
+        return cached.data;
+      }
+
+      throw error;
+    } finally {
+      pendingFetches.delete(cloud);
+    }
+  })();
+
+  pendingFetches.set(cloud, fetchPromise);
+  return fetchPromise;
 }
 
 /**
@@ -357,6 +372,14 @@ app.get('/api/lookup', async (req, res) => {
     });
   }
 
+  if (cloud.length > MAX_PARAM_LENGTH || ip.length > MAX_PARAM_LENGTH ||
+      (typeof sourceIp === 'string' && sourceIp.length > MAX_PARAM_LENGTH)) {
+    return res.status(400).json({
+      success: false,
+      error: `Parameter too long (max ${MAX_PARAM_LENGTH} characters)`
+    });
+  }
+
   if (!ZSCALER_CLOUDS.includes(cloud)) {
     return res.status(400).json({
       success: false,
@@ -455,7 +478,13 @@ app.post('/api/trace', async (req, res) => {
     });
   }
 
-  const MAX_TRACE_IPS = 50;
+  if (typeof cloud === 'string' && cloud.length > MAX_PARAM_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      error: `Parameter too long (max ${MAX_PARAM_LENGTH} characters)`
+    });
+  }
+
   if (ips.length === 0) {
     return res.status(400).json({
       success: false,
@@ -742,6 +771,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     status: 'healthy',
+    version: APP_VERSION,
     timestamp: new Date().toISOString(),
     cacheSize: dataCache.size
   });
