@@ -7,55 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-01
+
 ### Added
-- IPv6 support end-to-end: `lookupIp()` now matches IPv6 CIDRs for IPv6 queries; `getIpGeolocation()` correctly skips IPv6 private/link-local addresses (`::1`, `fc00::/7`, `fe80::/10`); frontend `validateIp` accepts both families.
+- IPv6 support end-to-end: `lookupIp()` matches IPv6 CIDRs for IPv6 queries; `getIpGeolocation()` skips IPv6 private/link-local addresses (`::1`, `fc00::/7`, `fe80::/10`); frontend `validateIp` accepts both families.
 - OpenAPI 1.4.0: nested `DatacenterInfo` schema (`name`, `city`, `country`, `latitude`, `longitude`, `ipRanges`); `LookupFound` uses `datacenter` object; `TraceResult` uses `results[]` with `totalResults`/`foundResults`; `/api/zdx/userpath` response updated to match actual implementation.
 - `requirements.txt` listing `zscaler-sdk-python` and `requests` for reproducible Python dependency installation.
 - `zdx_oneapi_geopath.py` OneAPI usage documented in `README_PYTHON.md`.
-- Rate limiting middleware (`express-rate-limit`) – 100 req / 15 min per IP on all `/api` routes.
-- Security headers via `helmet.js` including Content Security Policy (CSP).
-- Response compression via `compression` middleware.
-- Configurable CORS via `ALLOWED_ORIGINS` environment variable (default: allow all).
-- Cache-Control headers for static assets served from `/public`.
-- `utils/ip.js` module extracting `ipToInt`, `parseCidr`, `isIpInRange`, `isValidIp`.
-- Dynamic population of cloud dropdowns in the frontend from `/api/clouds`.
-- Unit tests for IP utilities (`tests/unit/ip.test.js`).
-- Unit tests for Haversine distance calculation (`tests/unit/distance.test.js`).
-- Integration tests for all API endpoints (`tests/integration/api.test.js`).
-- Test coverage reporting via `c8`.
-- ESLint configuration (`eslint.config.js`).
-- GitHub Actions CI workflow (`.github/workflows/ci.yml`).
-- Husky pre-commit hooks with `lint-staged`.
-- `CONTRIBUTING.md` with development setup and guidelines.
-- `openapi.yaml` – OpenAPI 3.0 specification for the REST API.
-- `docker-compose.override.yml` example for local development.
-- Resource limits (CPU/memory) in `docker-compose.yml`.
-- Comment in `Dockerfile` recommending digest pinning for production.
-- Optional HTTPS support via `SSL_KEY_PATH` and `SSL_CERT_PATH` environment variables (PR #3).
-- HTTP fallback when HTTPS certificates are not configured (PR #3).
-- `/api/zdx/userpath` endpoint for ZDX user path tracing (PR #4).
-- ZDX API credentials support via `ZDX_CLIENT_ID` and `ZDX_CLIENT_SECRET` environment variables (PR #4).
-- Input validation improvements for IP utility functions with proper error handling (PR #5).
-- Edge-case tests for null/undefined/empty inputs in IP utilities (PR #5).
-- Happy-path integration tests for `/api/lookup` and `/api/trace` endpoints (PR #5).
-- Extracted `calculateDistance` to dedicated `utils/distance.js` module (PR #5).
-
-### Changed
-- Error responses in production no longer expose internal `error.message` details.
-- Cloud dropdown options are now populated dynamically from the backend.
-- CORS error handling now returns proper 403 response instead of 500 (PR #5).
-- RFC 1918 private IP check now correctly identifies `172.16.0.0/12` range only (PR #5).
+- `TRUST_PROXY` documented in README Configuration section.
 
 ### Fixed
 - Private-IP detection in `getIpGeolocation()` now covers IPv6 loopback (`::1`), IPv4 link-local (`169.254.x.x`), and IPv6 unique-local/link-local ranges in addition to existing RFC 1918 IPv4 ranges.
 - Frontend `showSuccess()` now reads from the nested `data.datacenter` object returned by the API (was reading flat top-level fields).
-- RFC 1918 private IP check now correctly identifies `172.16.0.0/12` range only (PR #5).
-- Python script bugs in `zdx_geo_path.py` including proper error handling and geolocation lookups (PR #4).
-- CIDR format validation in `parseCidr` now properly rejects invalid prefix lengths (PR #5).
-- `fetchZscalerData` now validates cloud parameter against allowlist for defense-in-depth (PR #5).
-
-### Removed
-- Deprecated `git add` command from `lint-staged` configuration (PR #5).
+- Incomplete private-IP prefix list in `zdx_oneapi_geopath.py` — full RFC 1918 `172.16.0.0/12` coverage.
+- Bare `except:` in `zdx_oneapi_geopath.py` replaced with `except Exception:`.
 
 ## [1.3.0-beta] - 2024-01-01
 
@@ -63,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bulk IP lookup / Trace Route feature.
 - Export results as JSON, CSV, PNG.
 - Map route visualisation with animated polylines.
+- Rate limiting, Helmet CSP, compression, configurable CORS.
+- Unit/integration tests, ESLint, GitHub Actions CI, Husky.
+- OpenAPI 3.0 specification, Docker improvements, optional HTTPS.
+- `/api/zdx/userpath` endpoint and ZDX credentials support.
+
+### Fixed
+- RFC 1918 private IP check for `172.16.0.0/12`.
+- SSRF hardening via ZDX cloud allowlist.
+- CIDR prefix-length validation in `parseCidr`.
 
 ## [1.2.0] - 2023-12-01
 
