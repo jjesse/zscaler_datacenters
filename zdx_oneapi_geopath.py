@@ -6,17 +6,31 @@ from zscaler import ZscalerClient
 
 # 1. Geolocation Helper
 def get_country(ip):
-    # Filter for private LAN IPs
-    private = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', 
-               '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.']
-    if any(ip.startswith(p) for p in private) or ip == "0.0.0.0":
+    """Return a country name for an IP, or 'Local Network' for private ranges."""
+    if not ip or ip in ("0.0.0.0", "::", "::1"):
         return "Local Network"
-    
+
+    # RFC 1918 + link-local IPv4
+    if ip.startswith(("10.", "192.168.", "169.254.")):
+        return "Local Network"
+    if ip.startswith("172."):
+        try:
+            second = int(ip.split(".")[1])
+            if 16 <= second <= 31:
+                return "Local Network"
+        except (IndexError, ValueError):
+            pass
+
+    # IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
+    lower = ip.lower()
+    if lower.startswith(("fc", "fd", "fe80:")):
+        return "Local Network"
+
     try:
         # Standard Geo-IP lookup
         res = requests.get(f"https://ipapi.co/{ip}/country_name/", timeout=3)
         return res.text.strip() if res.status_code == 200 else "Unknown"
-    except:
+    except Exception:
         return "Unknown"
 
 # 2. Main Logic using OneAPI
@@ -83,4 +97,3 @@ if __name__ == "__main__":
     parser.add_argument("--app", required=True)
     args = parser.parse_args()
     fetch_oneapi_path(args.user, args.app)
-    
