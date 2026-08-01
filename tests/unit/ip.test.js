@@ -1,6 +1,6 @@
 'use strict';
 
-const { ipToInt, parseCidr, isIpInRange, isValidIp } = require('../../utils/ip');
+const { ipToInt, ipv6ToBigInt, parseCidr, isIpInRange, isValidIp, isValidIpv4, isValidIpv6, getIpFamily } = require('../../utils/ip');
 
 describe('ipToInt', () => {
   test('converts 0.0.0.0 to 0', () => {
@@ -150,9 +150,10 @@ describe('isValidIp', () => {
     expect(isValidIp('192.168.1.1.1')).toBe(false);
   });
 
-  test('returns false for IPv6', () => {
-    expect(isValidIp('::1')).toBe(false);
-    expect(isValidIp('2001:db8::1')).toBe(false);
+  test('returns true for valid IPv6 addresses', () => {
+    expect(isValidIp('::1')).toBe(true);
+    expect(isValidIp('2001:db8::1')).toBe(true);
+    expect(isValidIp('2605:4300:e800::1')).toBe(true);
   });
 
   test('returns false for null input', () => {
@@ -167,5 +168,130 @@ describe('isValidIp', () => {
     expect(isValidIp(12345)).toBe(false);
     expect(isValidIp({})).toBe(false);
     expect(isValidIp([])).toBe(false);
+  });
+});
+
+describe('ipv6ToBigInt', () => {
+  test('converts ::1 to 1n', () => {
+    expect(ipv6ToBigInt('::1')).toBe(1n);
+  });
+
+  test('converts :: to 0n', () => {
+    expect(ipv6ToBigInt('::')).toBe(0n);
+  });
+
+  test('converts 2001:db8:: correctly', () => {
+    const result = ipv6ToBigInt('2001:db8::');
+    expect(result).toBe(BigInt('0x20010db8000000000000000000000000'));
+  });
+
+  test('throws TypeError for null input', () => {
+    expect(() => ipv6ToBigInt(null)).toThrow(TypeError);
+  });
+
+  test('throws TypeError for empty string', () => {
+    expect(() => ipv6ToBigInt('')).toThrow(TypeError);
+  });
+});
+
+describe('isValidIpv4', () => {
+  test('returns true for valid IPv4 addresses', () => {
+    expect(isValidIpv4('192.168.1.1')).toBe(true);
+    expect(isValidIpv4('0.0.0.0')).toBe(true);
+    expect(isValidIpv4('255.255.255.255')).toBe(true);
+  });
+
+  test('returns false for IPv6 addresses', () => {
+    expect(isValidIpv4('::1')).toBe(false);
+    expect(isValidIpv4('2001:db8::1')).toBe(false);
+  });
+
+  test('returns false for invalid addresses', () => {
+    expect(isValidIpv4('256.0.0.0')).toBe(false);
+    expect(isValidIpv4('not-an-ip')).toBe(false);
+    expect(isValidIpv4('')).toBe(false);
+    expect(isValidIpv4(null)).toBe(false);
+  });
+});
+
+describe('isValidIpv6', () => {
+  test('returns true for valid IPv6 addresses', () => {
+    expect(isValidIpv6('::1')).toBe(true);
+    expect(isValidIpv6('::')).toBe(true);
+    expect(isValidIpv6('2001:db8::1')).toBe(true);
+    expect(isValidIpv6('2605:4300:e800::')).toBe(true);
+    expect(isValidIpv6('fe80::1')).toBe(true);
+  });
+
+  test('returns false for IPv4 addresses', () => {
+    expect(isValidIpv6('192.168.1.1')).toBe(false);
+    expect(isValidIpv6('0.0.0.0')).toBe(false);
+  });
+
+  test('returns false for invalid addresses', () => {
+    expect(isValidIpv6('')).toBe(false);
+    expect(isValidIpv6(null)).toBe(false);
+    expect(isValidIpv6('not-valid')).toBe(false);
+    // multiple :: is invalid
+    expect(isValidIpv6('::1::2')).toBe(false);
+  });
+});
+
+describe('getIpFamily', () => {
+  test('returns ipv4 for IPv4 addresses', () => {
+    expect(getIpFamily('192.168.1.1')).toBe('ipv4');
+    expect(getIpFamily('10.0.0.1')).toBe('ipv4');
+  });
+
+  test('returns ipv6 for IPv6 addresses', () => {
+    expect(getIpFamily('::1')).toBe('ipv6');
+    expect(getIpFamily('2001:db8::1')).toBe('ipv6');
+  });
+
+  test('returns null for invalid addresses', () => {
+    expect(getIpFamily('not-an-ip')).toBe(null);
+    expect(getIpFamily('')).toBe(null);
+    expect(getIpFamily(null)).toBe(null);
+  });
+});
+
+describe('parseCidr IPv6', () => {
+  test('parses 2001:db8::/32', () => {
+    const result = parseCidr('2001:db8::/32');
+    expect(result.family).toBe('ipv6');
+    expect(result.start).toBe(ipv6ToBigInt('2001:db8::'));
+    expect(result.end).toBe(ipv6ToBigInt('2001:db8:ffff:ffff:ffff:ffff:ffff:ffff'));
+  });
+
+  test('parses 2605:4300:e800::/40', () => {
+    const result = parseCidr('2605:4300:e800::/40');
+    expect(result.family).toBe('ipv6');
+    expect(result.start).toBe(ipv6ToBigInt('2605:4300:e800::'));
+  });
+
+  test('throws Error for invalid IPv6 prefix length', () => {
+    expect(() => parseCidr('2001:db8::/129')).toThrow('Invalid IPv6 CIDR prefix length');
+  });
+});
+
+describe('isIpInRange IPv6', () => {
+  const range = parseCidr('2001:db8::/32');
+
+  test('returns true for IP within range', () => {
+    expect(isIpInRange('2001:db8::1', range)).toBe(true);
+    expect(isIpInRange('2001:db8:1::1', range)).toBe(true);
+  });
+
+  test('returns true for first IP in range', () => {
+    expect(isIpInRange('2001:db8::', range)).toBe(true);
+  });
+
+  test('returns false for IP outside range', () => {
+    expect(isIpInRange('2001:db9::1', range)).toBe(false);
+    expect(isIpInRange('::1', range)).toBe(false);
+  });
+
+  test('returns false for IPv4 address against IPv6 range', () => {
+    expect(isIpInRange('192.168.1.1', range)).toBe(false);
   });
 });

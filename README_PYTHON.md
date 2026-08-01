@@ -156,4 +156,45 @@ This script is provided as-is for use with Zscaler Digital Experience monitoring
 
 ---
 
+## zdx_oneapi_geopath.py — ZIdentity / OneAPI Variant
+
+`zdx_oneapi_geopath.py` is an alternative script that authenticates using **ZIdentity OAuth2 (OneAPI)** credentials instead of Legacy ZDX API keys. Use this script if your organisation has migrated to the OneAPI authentication model.
+
+### OneAPI Prerequisites
+
+- Python 3.8 or higher
+- ZIdentity OAuth2 credentials (client ID and client secret from the ZIdentity portal)
+- `zscaler-sdk-python` and `requests` installed (see `requirements.txt`)
+
+### OneAPI Environment Variables
+
+```bash
+export ZIA_CLIENT_ID="your-zidentity-client-id"
+export ZIA_CLIENT_SECRET="your-zidentity-client-secret"
+export ZIA_CLOUD="zscalerthree"   # Your Zscaler cloud name (without .net)
+export ZDX_CLOUD="zdxcloud"       # ZDX cloud identifier
+```
+
+### OneAPI Usage
+
+```bash
+python zdx_oneapi_geopath.py --user <user_email> --app <app_name>
+```
+
+**Example:**
+
+```bash
+python zdx_oneapi_geopath.py --user jonathan@example.com --app "Outlook Online"
+```
+
+The output format is identical to `zdx_geo_path.py`: hop-by-hop IP addresses enriched with geolocation (country) information.
+
+### Installing Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
 **Last Updated**: February 25, 2026
