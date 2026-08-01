@@ -349,6 +349,14 @@ app.get('/api/lookup', async (req, res) => {
     });
   }
 
+  // Reject array values that Express coerces from repeated query params
+  if (typeof ip !== 'string' || (sourceIp !== undefined && typeof sourceIp !== 'string') || typeof cloud !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid parameter type: cloud, ip, and sourceIp must be single string values'
+    });
+  }
+
   if (!ZSCALER_CLOUDS.includes(cloud)) {
     return res.status(400).json({
       success: false,
