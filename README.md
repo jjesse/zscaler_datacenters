@@ -4,7 +4,7 @@ A web application to identify which Zscaler datacenter an IP address belongs to.
 
 ## Overview
 
-When connected to Zscaler, you may see an IP address but not know which datacenter location it represents. This tool fetches the latest Cloud Enforcement Node Ranges (CENR) from Zscaler's public API and identifies the datacenter location for any given IP address.
+When connected to Zscaler, you may see an IP address but not know which datacenter location it represents. This tool fetches the latest Cloud Enforcement Node Ranges (CENR) from Zscaler's public API and identifies the datacenter location for any given IPv4 or IPv6 address.
 
 ## Features
 
@@ -19,7 +19,7 @@ When connected to Zscaler, you may see an IP address but not know which datacent
   - zscalergov.net
   - zscalerten.net
 - 🔍 **IP Lookup** - Quickly identify which datacenter an IP belongs to (IPv4 and IPv6 supported)
-- �️ **Interactive Map** - Visualize datacenter locations on an interactive map using Leaflet
+- 🗺️ **Interactive Map** - Visualize datacenter locations on an interactive map using Leaflet
 - 🚀 **Traffic Flow Visualization** - See the traffic path from your location to the Zscaler datacenter
   - Dual markers showing your location (📍) and datacenter (🏢)
   - Animated traffic flow line with directional arrow
@@ -46,14 +46,14 @@ When connected to Zscaler, you may see an IP address but not know which datacent
 ### Prerequisites
 
 - Docker and Docker Compose (recommended)
-- OR Node.js 18+ (for local development)
+- OR Node.js 20+ (for local development; see `.nvmrc`)
 
 ### Running with Docker (Recommended)
 
 1. Clone this repository:
    ```bash
    git clone <repository-url>
-   cd zscaler
+   cd zscaler_datacenters
    ```
 
 2. Start the application:
@@ -65,6 +65,8 @@ When connected to Zscaler, you may see an IP address but not know which datacent
    ```
    http://localhost:3000
    ```
+
+By default, Docker Compose binds the app to `127.0.0.1:3000` (localhost only). Change the port mapping in `docker-compose.yml` if you need to expose it on other interfaces.
 
 ### Running without Docker
 
@@ -254,6 +256,7 @@ Health check endpoint for monitoring application status.
 {
   "success": true,
   "status": "healthy",
+  "version": "1.4.1",
   "timestamp": "2026-02-21T12:00:00.000Z",
   "cacheSize": 3
 }
@@ -313,19 +316,33 @@ curl -X POST http://localhost:3000/api/zdx/userpath \
 ### Project Structure
 
 ```
-zscaler/
-├── server.js           # Express backend server
-├── public/             # Frontend static files
-│   ├── index.html     # Main HTML page
-│   ├── styles.css     # Styles
-│   └── app.js         # Frontend JavaScript
-├── package.json        # Node.js dependencies
-├── Dockerfile          # Docker image configuration
-├── docker-compose.yml  # Docker Compose configuration
-├── .dockerignore      # Docker ignore file
-├── README.md          # This file
-├── TODO.md            # Development roadmap
-└── instructions.md    # Original project instructions
+zscaler_datacenters/
+├── server.js                 # Express backend server
+├── utils/
+│   ├── ip.js                 # IP / CIDR helpers (IPv4 + IPv6)
+│   └── distance.js           # Haversine distance calculation
+├── public/                   # Frontend static files
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js
+├── tests/
+│   ├── unit/                 # Unit tests (ip, distance)
+│   └── integration/          # API integration tests
+├── .github/workflows/ci.yml  # Lint + test CI
+├── openapi.yaml              # OpenAPI 3 specification
+├── package.json
+├── Dockerfile                # Node.js 20 Alpine image
+├── docker-compose.yml        # Binds 127.0.0.1:3000 by default
+├── .nvmrc                    # Pins Node.js 20
+├── .env.example
+├── requirements.txt          # Python deps for ZDX scripts
+├── zdx_geo_path.py
+├── zdx_oneapi_geopath.py
+├── README.md
+├── README_PYTHON.md
+├── CONTRIBUTING.md
+├── CHANGELOG.md
+└── TODO.md                   # Open backlog + completed work
 ```
 
 ### Technologies Used

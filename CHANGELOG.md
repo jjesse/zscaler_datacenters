@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refreshed `README.md` and `TODO.md` for v1.4.1 accuracy (Node 20 prerequisites, health `version` example, project tree, localhost Docker bind note, open backlog at top of TODO).
+- Expanded `CONTRIBUTING.md` project structure to include CI, OpenAPI, and Python ZDX scripts.
+
 ## [1.4.1] - 2026-08-01
 
 ### Added

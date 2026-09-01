@@ -43,10 +43,10 @@ Thank you for your interest in contributing to Zscaler Datacenter Lookup!
 
 ```
 .
-├── server.js            # Express backend
+├── server.js                 # Express backend
 ├── utils/
-│   ├── ip.js            # IP utility functions
-│   └── distance.js      # Haversine distance calculation
+│   ├── ip.js                 # IP / CIDR helpers (IPv4 + IPv6)
+│   └── distance.js           # Haversine distance calculation
 ├── public/
 │   ├── index.html
 │   ├── app.js
@@ -54,8 +54,16 @@ Thank you for your interest in contributing to Zscaler Datacenter Lookup!
 ├── tests/
 │   ├── unit/
 │   └── integration/
-└── docker-compose.yml
+├── .github/workflows/ci.yml  # Lint + test CI
+├── openapi.yaml              # OpenAPI 3 specification
+├── requirements.txt          # Python deps for ZDX scripts
+├── zdx_geo_path.py
+├── zdx_oneapi_geopath.py
+├── docker-compose.yml        # Binds 127.0.0.1:3000 by default
+└── .nvmrc                    # Pins Node.js 20
 ```
+
+Requires **Node.js 20+** (see `.nvmrc` and `package.json` `engines`).
 
 ## Pull Request Guidelines
 
