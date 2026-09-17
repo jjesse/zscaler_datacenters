@@ -1,13 +1,15 @@
 # TODO - Zscaler Datacenter Lookup Tool
 
 **Current version:** 1.4.1  
-**Last reviewed:** 2026-09-01
+**Last reviewed:** 2026-09-17
 
 The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is complete. Use the **Open backlog** below for what to work on next.
 
 ---
 
 ## Open backlog
+
+**Review note (2026-09-17):** None of the open backlog items are implemented yet in the current codebase. The next best task is to add ESLint coverage for `public/app.js` before more frontend feature work, because that file now holds most client-side logic and is still excluded from CI linting.
 
 ### Medium priority
 
@@ -41,7 +43,7 @@ The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is
 - [ ] Add multi-language support
 - [ ] Add keyboard shortcuts
 
-**Suggested next implementation order:** shareable URLs → admin cache flush → HTTP→HTTPS redirect → ESLint for `public/app.js` → Python tests + CI → resume dark mode branch.
+**Suggested next implementation order:** ESLint for `public/app.js` → shareable URLs → admin cache flush → HTTP→HTTPS redirect → Python tests + CI → frontend tests → resume dark mode branch.
 
 ---
 
