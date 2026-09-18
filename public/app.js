@@ -213,8 +213,8 @@ function showSuccess(data) {
     const dcCity = dc.city || '';
     const dcContinent = data.continent || dc.country || '';
     const dcRange = data.matchedRange || (dc.ipRanges && dc.ipRanges[0]) || '';
-    const dcLat = dc.latitude != null ? dc.latitude : null;
-    const dcLng = dc.longitude != null ? dc.longitude : null;
+    const dcLat = dc.latitude !== null && dc.latitude !== undefined ? dc.latitude : null;
+    const dcLng = dc.longitude !== null && dc.longitude !== undefined ? dc.longitude : null;
 
     const html = `
         <div class="result-info">
@@ -242,7 +242,7 @@ function showSuccess(data) {
                 <span class="info-label">Queried IP:</span>
                 <span class="info-value">${escapeHtml(data.ip)}</span>
             </div>
-            ${dcLat != null && dcLng != null ? `
+            ${dcLat !== null && dcLng !== null ? `
             <div class="info-row">
                 <span class="info-label">Coordinates:</span>
                 <span class="info-value">${escapeHtml(String(dcLat))}, ${escapeHtml(String(dcLng))}</span>
@@ -275,7 +275,7 @@ function showSuccess(data) {
     resultContainer.querySelector('.result-card').classList.remove('error');
     
     // Show map if coordinates are available
-    if (dcLat != null && dcLng != null) {
+    if (dcLat !== null && dcLng !== null) {
         const datacenterLat = parseFloat(dcLat);
         const datacenterLng = parseFloat(dcLng);
         const clientLat = data.clientLatitude ? parseFloat(data.clientLatitude) : null;
@@ -395,7 +395,7 @@ function showMap(datacenterLat, datacenterLng, datacenterName, clientLat, client
         }
         
         // Add arrow decorator to show direction
-        const arrowHead = L.polylineDecorator(flowLine, {
+        L.polylineDecorator(flowLine, {
             patterns: [
                 {
                     offset: '50%',
@@ -650,7 +650,7 @@ function showTraceSuccess(data) {
         `;
     });
     
-    html += `</div>`;
+    html += '</div>';
     
     traceResultContent.innerHTML = html;
     traceResultContainer.style.display = 'block';
@@ -820,7 +820,7 @@ function hideTraceResults() {
 function copyTraceToClipboard() {
     if (!currentTraceData) return;
     
-    let text = `ZSCALER TRACE ROUTE RESULTS\n`;
+    let text = 'ZSCALER TRACE ROUTE RESULTS\n';
     text += `${'='.repeat(50)}\n\n`;
     text += `Cloud: ${currentTraceData.cloud}\n`;
     text += `Total Hops: ${currentTraceData.totalHops}\n`;
@@ -830,7 +830,7 @@ function copyTraceToClipboard() {
         text += `Total Distance: ${currentTraceData.totalDistance.toFixed(1)} km (${currentTraceData.totalDistanceMiles.toFixed(1)} miles)\n`;
     }
     
-    text += `\nROUTE DETAILS:\n`;
+    text += '\nROUTE DETAILS:\n';
     text += `${'-'.repeat(50)}\n\n`;
     
     currentTraceData.hops.forEach((hop, index) => {
@@ -854,14 +854,14 @@ function copyTraceToClipboard() {
                 text += `  Coordinates: ${hop.latitude}, ${hop.longitude}\n`;
             }
         } else {
-            text += `  Location: Unknown\n`;
+            text += '  Location: Unknown\n';
         }
         
         if (hop.distanceFromPrevious) {
             text += `  Distance from previous: ${hop.distanceFromPrevious.toFixed(1)} km\n`;
         }
         
-        text += `\n`;
+        text += '\n';
     });
     
     text += `\nGenerated: ${new Date().toLocaleString()}\n`;
@@ -936,7 +936,7 @@ function exportTraceAsCsv() {
     });
     
     // Add summary row
-    csv += `\nSummary\n`;
+    csv += '\nSummary\n';
     csv += `Cloud,"${currentTraceData.cloud}"\n`;
     csv += `Total Hops,${currentTraceData.totalHops}\n`;
     csv += `Found Hops,${currentTraceData.foundHops}\n`;
@@ -1295,14 +1295,14 @@ function renderZdxMap(hops) {
 function copyZdxToClipboard() {
     if (!currentZdxData) return;
     
-    let text = `ZDX User Path Results\n`;
-    text += `=====================\n\n`;
+    let text = 'ZDX User Path Results\n';
+    text += '=====================\n\n';
     text += `User: ${currentZdxData.user}\n`;
     text += `Device: ${currentZdxData.device}\n`;
     text += `Application: ${currentZdxData.application}\n`;
     text += `Probe: ${currentZdxData.probe}\n`;
-    text += `\nNetwork Path:\n`;
-    text += `-`.repeat(80) + '\n';
+    text += '\nNetwork Path:\n';
+    text += '-'.repeat(80) + '\n';
     
     currentZdxData.hops.forEach((hop, index) => {
         const location = hop.city && hop.country 

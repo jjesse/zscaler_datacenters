@@ -9,7 +9,7 @@ The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is
 
 ## Open backlog
 
-**Review note (2026-09-18):** The testing backlog is complete. The next best task is to add ESLint coverage for `public/app.js` before more frontend feature work, because that file now holds most client-side logic and is still excluded from CI linting.
+**Review note (2026-09-18):** The testing and frontend linting backlog is complete. The next best task is shareable lookup URLs, followed by the admin cache-flush endpoint.
 
 ### Medium priority
 
@@ -17,7 +17,7 @@ The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is
 - [ ] Add HTTP → HTTPS redirect when HTTPS certificates are configured, so clients that connect on the HTTP port are automatically redirected
 
 **Code quality**
-- [ ] Add ESLint coverage for `public/app.js` (currently excluded via `--ignore-pattern public/`) – or add a separate browser-targeted ESLint config so frontend JS quality is enforced in CI
+- [x] Add ESLint coverage for `public/app.js` with a browser-targeted ESLint config so frontend JS quality is enforced in CI
 
 **Testing**
 - [x] Add unit tests for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) covering the `get_country()` helper and argument parsing (use `pytest` + `unittest.mock`)

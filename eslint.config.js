@@ -2,6 +2,15 @@
 
 const js = require('@eslint/js');
 
+const sharedRules = {
+  'no-console': 'off',
+  'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+  'prefer-const': 'error',
+  eqeqeq: ['error', 'always'],
+  semi: ['error', 'always'],
+  quotes: ['error', 'single', { avoidEscape: true }],
+};
+
 module.exports = [
   js.configs.recommended,
   {
@@ -27,14 +36,29 @@ module.exports = [
         URLSearchParams: 'readonly',
       },
     },
-    rules: {
-      'no-console': 'off',
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'prefer-const': 'error',
-      'eqeqeq': ['error', 'always'],
-      'semi': ['error', 'always'],
-      'quotes': ['error', 'single', { avoidEscape: true }],
+    rules: sharedRules,
+  },
+  {
+    files: ['public/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'script',
+      globals: {
+        alert: 'readonly',
+        Blob: 'readonly',
+        console: 'readonly',
+        document: 'readonly',
+        fetch: 'readonly',
+        html2canvas: 'readonly',
+        L: 'readonly',
+        module: 'readonly',
+        navigator: 'readonly',
+        setTimeout: 'readonly',
+        URL: 'readonly',
+        window: 'readonly',
+      },
     },
+    rules: sharedRules,
   },
   {
     files: ['tests/**/*.js'],

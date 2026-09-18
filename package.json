@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest --testPathPatterns=tests/ --forceExit",
     "test:coverage": "c8 jest --testPathPatterns=tests/ --forceExit",
-    "lint": "eslint . --ext .js --ignore-pattern public/"
+    "lint": "eslint . --ext .js"
   },
   "keywords": [
     "zscaler",
