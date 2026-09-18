@@ -91,9 +91,17 @@ def fetch_oneapi_path(user_email, app_name):
         country = get_country(ip)
         print(f"{hop.get('hop'):<5} {ip:<18} {hop.get('rtt', '*'):<10} {country:<15}")
 
-if __name__ == "__main__":
+def parse_args(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--user", required=True)
     parser.add_argument("--app", required=True)
-    args = parser.parse_args()
-    fetch_oneapi_path(args.user, args.app)
+    return parser.parse_args(args)
+
+
+def main(args=None):
+    parsed_args = parse_args(args)
+    fetch_oneapi_path(parsed_args.user, parsed_args.app)
+
+
+if __name__ == "__main__":
+    main()

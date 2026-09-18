@@ -31,8 +31,17 @@ A Python script that traces network paths from Zscaler Digital Experience (ZDX) 
 
 3. **Install required dependencies**:
    ```bash
-   pip install zscaler-sdk-python requests
+   pip install -r requirements.txt
    ```
+
+## Testing
+
+Install `pytest` alongside the script dependencies, then run the Python test suite:
+
+```bash
+pip install pytest
+pytest tests/python
+```
 
 ## Configuration
 
@@ -139,6 +148,7 @@ Hop   IP Address         RTT (ms)   Country
 
 - `zscaler-sdk-python` - Official Zscaler SDK
 - `requests` - HTTP library for API calls and geolocation lookups
+- `python-dotenv` - Loads local Legacy ZDX credentials from `.env`
 
 ## Cloud Configuration
 

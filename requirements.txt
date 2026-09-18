@@ -1,3 +1,4 @@
 # Python dependencies for zdx_geo_path.py and zdx_oneapi_geopath.py
 zscaler-sdk-python>=0.10.0
 requests>=2.28.0
+python-dotenv>=1.0.0

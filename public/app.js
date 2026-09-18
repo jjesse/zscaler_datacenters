@@ -1388,3 +1388,13 @@ function exportZdxAsCsv() {
         exportZdxCsvBtn.style.backgroundColor = '';
     }, 2000);
 }
+
+if (typeof module !== 'undefined') {
+    module.exports = {
+        escapeHtml,
+        showError,
+        showSuccess,
+        switchTab,
+        validateIp
+    };
+}

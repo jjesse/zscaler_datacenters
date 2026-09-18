@@ -9,7 +9,7 @@ The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is
 
 ## Open backlog
 
-**Review note (2026-09-17):** None of the open backlog items are implemented yet in the current codebase. The next best task is to add ESLint coverage for `public/app.js` before more frontend feature work, because that file now holds most client-side logic and is still excluded from CI linting.
+**Review note (2026-09-18):** The testing backlog is complete. The next best task is to add ESLint coverage for `public/app.js` before more frontend feature work, because that file now holds most client-side logic and is still excluded from CI linting.
 
 ### Medium priority
 
@@ -20,9 +20,9 @@ The core app (lookup, map, trace route, Docker, CI, security hardening, IPv6) is
 - [ ] Add ESLint coverage for `public/app.js` (currently excluded via `--ignore-pattern public/`) – or add a separate browser-targeted ESLint config so frontend JS quality is enforced in CI
 
 **Testing**
-- [ ] Add unit tests for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) covering the `get_country()` helper and argument parsing (use `pytest` + `unittest.mock`)
-- [ ] Add a CI step for the Python scripts: install dependencies from `requirements.txt` and run `pytest`
-- [ ] Add frontend unit/E2E tests for `public/app.js` (e.g., with Playwright or Puppeteer) – the frontend has zero automated test coverage today
+- [x] Add unit tests for the Python scripts (`zdx_geo_path.py`, `zdx_oneapi_geopath.py`) covering the `get_country()` helper and argument parsing (use `pytest` + `unittest.mock`)
+- [x] Add a CI step for the Python scripts: install dependencies from `requirements.txt` and run `pytest`
+- [x] Add frontend unit/E2E tests for `public/app.js` (Jest + jsdom)
 
 **Features**
 - [ ] Add a per-cloud cache-refresh endpoint (e.g., `POST /api/cache/flush`) protected by a configurable admin token, so operators can force a data refresh without restarting the container

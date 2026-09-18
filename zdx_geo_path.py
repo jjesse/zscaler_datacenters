@@ -12,7 +12,7 @@ load_dotenv()
 def get_country(ip):
     # Filter out private IP addresses (Home/Office LAN)
     private_prefixes = ['10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.']
-    if any(ip.startswith(prefix) for prefix in private_prefixes) or ip == "0.0.0.0" or not ip:
+    if not ip or ip in ("0.0.0.0", "::", "::1") or any(ip.startswith(prefix) for prefix in private_prefixes):
         return "Local Network"
     
     try:
@@ -121,12 +121,18 @@ def run_geo_lookup(user_email, app_name, cloud_name):
                 print(f"{hop_num:<5} {ip:<18} {latency:<10} {country:<20}")
                 hop_num += 1
 
-if __name__ == "__main__":
+def parse_args(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--user", required=True)
     parser.add_argument("--app", required=True)
     parser.add_argument("--cloud", default="zdxcloud", help="ZDX cloud name (default: zdxcloud)")
-    args = parser.parse_args()
-    
-    # Run the script
-    run_geo_lookup(args.user, args.app, args.cloud)
+    return parser.parse_args(args)
+
+
+def main(args=None):
+    parsed_args = parse_args(args)
+    run_geo_lookup(parsed_args.user, parsed_args.app, parsed_args.cloud)
+
+
+if __name__ == "__main__":
+    main()
